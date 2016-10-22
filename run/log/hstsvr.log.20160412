@@ -1,0 +1,414 @@
+2016/04/12 22:16:56         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:16:56         (003658) 
+<HstSvrExit>  died process pid=[3660],exit code=[3840]
+
+2016/04/12 22:16:56         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:16:56         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:16:56         (003658) 
+command=0, foldname=
+
+2016/04/12 22:16:56         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:16:56         (003658) 
+<HstSvrExit>  died process pid=[3683],exit code=[0]
+
+2016/04/12 22:16:56         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:16:56         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:16:56         (003658) 
+command=0, foldname=
+
+2016/04/12 22:16:56         (003695) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:16:56         (003696) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:17:08         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:08         (003658) 
+<HstSvrExit>  died process pid=[3695],exit code=[3840]
+
+2016/04/12 22:17:08         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:17:08         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:17:08         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:08         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:08         (003658) 
+<HstSvrExit>  died process pid=[3696],exit code=[0]
+
+2016/04/12 22:17:08         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:17:08         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:17:08         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:08         (003700) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:17:08         (003701) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:17:19         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:19         (003658) 
+<HstSvrExit>  died process pid=[3700],exit code=[3840]
+
+2016/04/12 22:17:19         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:17:19         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:17:19         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:19         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:19         (003658) 
+<HstSvrExit>  died process pid=[3701],exit code=[0]
+
+2016/04/12 22:17:19         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:17:19         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:17:19         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:19         (003705) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:17:19         (003706) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:17:31         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:31         (003658) 
+<HstSvrExit>  died process pid=[3705],exit code=[3840]
+
+2016/04/12 22:17:31         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:17:31         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:17:31         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:31         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:31         (003658) 
+<HstSvrExit>  died process pid=[3706],exit code=[0]
+
+2016/04/12 22:17:31         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:17:31         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:17:31         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:31         (003710) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:17:31         (003711) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:17:41         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:41         (003658) 
+<HstSvrExit>  died process pid=[3710],exit code=[3840]
+
+2016/04/12 22:17:41         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:17:41         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:17:41         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:41         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:41         (003658) 
+<HstSvrExit>  died process pid=[3711],exit code=[0]
+
+2016/04/12 22:17:41         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:17:41         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:17:41         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:41         (003715) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:17:41         (003716) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:17:53         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:53         (003658) 
+<HstSvrExit>  died process pid=[3715],exit code=[3840]
+
+2016/04/12 22:17:53         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:17:53         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:17:53         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:53         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:17:53         (003658) 
+<HstSvrExit>  died process pid=[3716],exit code=[0]
+
+2016/04/12 22:17:53         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:17:53         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:17:53         (003658) 
+command=0, foldname=
+
+2016/04/12 22:17:53         (003720) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:17:53         (003721) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:18:07         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:07         (003658) 
+<HstSvrExit>  died process pid=[3720],exit code=[3840]
+
+2016/04/12 22:18:07         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:18:07         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:18:07         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:07         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:07         (003658) 
+<HstSvrExit>  died process pid=[3721],exit code=[0]
+
+2016/04/12 22:18:07         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:18:07         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:18:07         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:07         (003727) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:18:07         (003728) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:18:16         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:16         (003658) 
+<HstSvrExit>  died process pid=[3727],exit code=[3840]
+
+2016/04/12 22:18:16         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:18:16         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:18:16         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:16         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:16         (003658) 
+<HstSvrExit>  died process pid=[3728],exit code=[0]
+
+2016/04/12 22:18:16         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:18:16         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:18:16         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:16         (003732) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:18:16         (003733) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:18:25         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:25         (003658) 
+<HstSvrExit>  died process pid=[3732],exit code=[3840]
+
+2016/04/12 22:18:25         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:18:25         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:18:25         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:25         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:25         (003658) 
+<HstSvrExit>  died process pid=[3733],exit code=[0]
+
+2016/04/12 22:18:25         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:18:25         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:18:25         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:25         (003737) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:18:25         (003738) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:18:40         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:40         (003658) 
+<HstSvrExit>  died process pid=[3737],exit code=[3840]
+
+2016/04/12 22:18:40         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:18:40         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:18:40         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:40         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:40         (003658) 
+<HstSvrExit>  died process pid=[3738],exit code=[0]
+
+2016/04/12 22:18:40         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:18:40         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:18:40         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:40         (003742) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:18:40         (003743) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:18:51         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:51         (003658) 
+<HstSvrExit>  died process pid=[3742],exit code=[3840]
+
+2016/04/12 22:18:51         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:18:51         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:18:51         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:51         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:18:51         (003658) 
+<HstSvrExit>  died process pid=[3743],exit code=[0]
+
+2016/04/12 22:18:51         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/12 22:18:51         (003658) 
+start process low=0,upper=0
+
+2016/04/12 22:18:51         (003658) 
+command=0, foldname=
+
+2016/04/12 22:18:51         (003747) 
+execute dcxhstcp kkkk 002
+
+2016/04/12 22:18:51         (003748) 
+execute dcxhstcp kkkk 001
+
+2016/04/12 22:19:16         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/12 22:19:16         (003658) 
+<HstSvrExit>  died process pid=[3747],exit code=[3840]
+
+2016/04/12 22:19:16         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/12 22:19:16         (003658) 
+start process low=1,upper=1
+
+2016/04/12 22:19:16         (003658) 
+command=0, foldname=
+
+2016/04/12 22:19:16         (003752) 
+execute dcxhstcp kkkk 002
+

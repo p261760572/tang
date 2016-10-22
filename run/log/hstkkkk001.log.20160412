@@ -1,0 +1,591 @@
+2016/04/12 22:16:51 kkkk001(003683) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:16:51 kkkk001(003683) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:16:51 kkkk001(003683) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:16:51]]
+
+2016/04/12 22:16:51 kkkk001(003683) 
+check_flag =1
+
+2016/04/12 22:16:56 kkkk001(003683) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:16:56 kkkk001(003683) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:16:56 kkkk001(003683) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:16:56 kkkk001(003683) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:16:56]]
+
+2016/04/12 22:16:56 kkkk001(003683) 
+notify end
+
+2016/04/12 22:16:56 kkkk001(003683) 
+exit system signo =0
+
+2016/04/12 22:16:56 kkkk001(003696) 
+connect folder system
+
+2016/04/12 22:16:56 kkkk001(003696) 
+locate folder id
+
+2016/04/12 22:16:56 kkkk001(003696) 
+locate link msg
+
+2016/04/12 22:16:56 kkkk001(003696) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:16:56 kkkk001(003696) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:16:56 kkkk001(003696) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:16:56 kkkk001(003696) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:17:02 kkkk001(003696) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:17:02 kkkk001(003696) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:02 kkkk001(003696) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:17:02]]
+
+2016/04/12 22:17:02 kkkk001(003696) 
+check_flag =1
+
+2016/04/12 22:17:08 kkkk001(003696) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:17:08 kkkk001(003696) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:17:08 kkkk001(003696) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:08 kkkk001(003696) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:17:08]]
+
+2016/04/12 22:17:08 kkkk001(003696) 
+notify end
+
+2016/04/12 22:17:08 kkkk001(003696) 
+exit system signo =0
+
+2016/04/12 22:17:08 kkkk001(003701) 
+connect folder system
+
+2016/04/12 22:17:08 kkkk001(003701) 
+locate folder id
+
+2016/04/12 22:17:08 kkkk001(003701) 
+locate link msg
+
+2016/04/12 22:17:08 kkkk001(003701) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:17:08 kkkk001(003701) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:17:08 kkkk001(003701) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:17:08 kkkk001(003701) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:17:14 kkkk001(003701) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:17:14 kkkk001(003701) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:14 kkkk001(003701) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:17:14]]
+
+2016/04/12 22:17:14 kkkk001(003701) 
+check_flag =1
+
+2016/04/12 22:17:19 kkkk001(003701) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:17:19 kkkk001(003701) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:17:19 kkkk001(003701) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:19 kkkk001(003701) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:17:19]]
+
+2016/04/12 22:17:19 kkkk001(003701) 
+notify end
+
+2016/04/12 22:17:19 kkkk001(003701) 
+exit system signo =0
+
+2016/04/12 22:17:19 kkkk001(003706) 
+connect folder system
+
+2016/04/12 22:17:19 kkkk001(003706) 
+locate folder id
+
+2016/04/12 22:17:19 kkkk001(003706) 
+locate link msg
+
+2016/04/12 22:17:19 kkkk001(003706) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:17:19 kkkk001(003706) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:17:19 kkkk001(003706) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:17:19 kkkk001(003706) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:17:25 kkkk001(003706) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:17:25 kkkk001(003706) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:25 kkkk001(003706) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:17:25]]
+
+2016/04/12 22:17:25 kkkk001(003706) 
+check_flag =1
+
+2016/04/12 22:17:31 kkkk001(003706) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:17:31 kkkk001(003706) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:17:31 kkkk001(003706) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:31 kkkk001(003706) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:17:31]]
+
+2016/04/12 22:17:31 kkkk001(003706) 
+notify end
+
+2016/04/12 22:17:31 kkkk001(003706) 
+exit system signo =0
+
+2016/04/12 22:17:31 kkkk001(003711) 
+connect folder system
+
+2016/04/12 22:17:31 kkkk001(003711) 
+locate folder id
+
+2016/04/12 22:17:31 kkkk001(003711) 
+locate link msg
+
+2016/04/12 22:17:31 kkkk001(003711) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:17:31 kkkk001(003711) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:17:31 kkkk001(003711) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:17:31 kkkk001(003711) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:17:35 kkkk001(003711) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:17:35 kkkk001(003711) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:35 kkkk001(003711) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:17:35]]
+
+2016/04/12 22:17:35 kkkk001(003711) 
+check_flag =1
+
+2016/04/12 22:17:41 kkkk001(003711) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:17:41 kkkk001(003711) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:17:41 kkkk001(003711) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:41 kkkk001(003711) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:17:41]]
+
+2016/04/12 22:17:41 kkkk001(003711) 
+notify end
+
+2016/04/12 22:17:41 kkkk001(003711) 
+exit system signo =0
+
+2016/04/12 22:17:41 kkkk001(003716) 
+connect folder system
+
+2016/04/12 22:17:41 kkkk001(003716) 
+locate folder id
+
+2016/04/12 22:17:41 kkkk001(003716) 
+locate link msg
+
+2016/04/12 22:17:41 kkkk001(003716) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:17:41 kkkk001(003716) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:17:41 kkkk001(003716) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:17:41 kkkk001(003716) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:17:47 kkkk001(003716) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:17:47 kkkk001(003716) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:47 kkkk001(003716) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:17:47]]
+
+2016/04/12 22:17:47 kkkk001(003716) 
+check_flag =1
+
+2016/04/12 22:17:53 kkkk001(003716) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:17:53 kkkk001(003716) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:17:53 kkkk001(003716) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:53 kkkk001(003716) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:17:53]]
+
+2016/04/12 22:17:53 kkkk001(003716) 
+notify end
+
+2016/04/12 22:17:53 kkkk001(003716) 
+exit system signo =0
+
+2016/04/12 22:17:53 kkkk001(003721) 
+connect folder system
+
+2016/04/12 22:17:53 kkkk001(003721) 
+locate folder id
+
+2016/04/12 22:17:53 kkkk001(003721) 
+locate link msg
+
+2016/04/12 22:17:53 kkkk001(003721) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:17:53 kkkk001(003721) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:17:53 kkkk001(003721) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:17:53 kkkk001(003721) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:18:01 kkkk001(003721) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:18:01 kkkk001(003721) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:01 kkkk001(003721) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:18:01]]
+
+2016/04/12 22:18:01 kkkk001(003721) 
+check_flag =1
+
+2016/04/12 22:18:07 kkkk001(003721) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:18:07 kkkk001(003721) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:18:07 kkkk001(003721) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:07 kkkk001(003721) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:18:07]]
+
+2016/04/12 22:18:07 kkkk001(003721) 
+notify end
+
+2016/04/12 22:18:07 kkkk001(003721) 
+exit system signo =0
+
+2016/04/12 22:18:07 kkkk001(003728) 
+connect folder system
+
+2016/04/12 22:18:07 kkkk001(003728) 
+locate folder id
+
+2016/04/12 22:18:07 kkkk001(003728) 
+locate link msg
+
+2016/04/12 22:18:07 kkkk001(003728) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:18:07 kkkk001(003728) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:18:07 kkkk001(003728) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:18:07 kkkk001(003728) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:18:13 kkkk001(003728) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:18:13 kkkk001(003728) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:13 kkkk001(003728) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:18:13]]
+
+2016/04/12 22:18:13 kkkk001(003728) 
+check_flag =1
+
+2016/04/12 22:18:16 kkkk001(003728) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:18:16 kkkk001(003728) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:18:16 kkkk001(003728) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:16 kkkk001(003728) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:18:16]]
+
+2016/04/12 22:18:16 kkkk001(003728) 
+notify end
+
+2016/04/12 22:18:16 kkkk001(003728) 
+exit system signo =0
+
+2016/04/12 22:18:16 kkkk001(003733) 
+connect folder system
+
+2016/04/12 22:18:16 kkkk001(003733) 
+locate folder id
+
+2016/04/12 22:18:16 kkkk001(003733) 
+locate link msg
+
+2016/04/12 22:18:16 kkkk001(003733) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:18:16 kkkk001(003733) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:18:16 kkkk001(003733) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:18:16 kkkk001(003733) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:18:22 kkkk001(003733) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:18:22 kkkk001(003733) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:22 kkkk001(003733) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:18:22]]
+
+2016/04/12 22:18:22 kkkk001(003733) 
+check_flag =1
+
+2016/04/12 22:18:25 kkkk001(003733) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:18:25 kkkk001(003733) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:18:25 kkkk001(003733) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:25 kkkk001(003733) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:18:25]]
+
+2016/04/12 22:18:25 kkkk001(003733) 
+notify end
+
+2016/04/12 22:18:25 kkkk001(003733) 
+exit system signo =0
+
+2016/04/12 22:18:25 kkkk001(003738) 
+connect folder system
+
+2016/04/12 22:18:25 kkkk001(003738) 
+locate folder id
+
+2016/04/12 22:18:25 kkkk001(003738) 
+locate link msg
+
+2016/04/12 22:18:25 kkkk001(003738) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:18:25 kkkk001(003738) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:18:25 kkkk001(003738) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:18:25 kkkk001(003738) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:18:35 kkkk001(003738) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:18:35 kkkk001(003738) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:35 kkkk001(003738) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:18:35]]
+
+2016/04/12 22:18:35 kkkk001(003738) 
+check_flag =1
+
+2016/04/12 22:18:40 kkkk001(003738) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:18:40 kkkk001(003738) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:18:40 kkkk001(003738) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:40 kkkk001(003738) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:18:40]]
+
+2016/04/12 22:18:40 kkkk001(003738) 
+notify end
+
+2016/04/12 22:18:40 kkkk001(003738) 
+exit system signo =0
+
+2016/04/12 22:18:40 kkkk001(003743) 
+connect folder system
+
+2016/04/12 22:18:40 kkkk001(003743) 
+locate folder id
+
+2016/04/12 22:18:40 kkkk001(003743) 
+locate link msg
+
+2016/04/12 22:18:40 kkkk001(003743) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:18:40 kkkk001(003743) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:18:40 kkkk001(003743) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:18:40 kkkk001(003743) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:18:46 kkkk001(003743) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:18:46 kkkk001(003743) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:46 kkkk001(003743) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:18:46]]
+
+2016/04/12 22:18:46 kkkk001(003743) 
+check_flag =1
+
+2016/04/12 22:18:51 kkkk001(003743) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:18:51 kkkk001(003743) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:18:51 kkkk001(003743) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:51 kkkk001(003743) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:18:51]]
+
+2016/04/12 22:18:51 kkkk001(003743) 
+notify end
+
+2016/04/12 22:18:51 kkkk001(003743) 
+exit system signo =0
+
+2016/04/12 22:18:51 kkkk001(003748) 
+connect folder system
+
+2016/04/12 22:18:51 kkkk001(003748) 
+locate folder id
+
+2016/04/12 22:18:51 kkkk001(003748) 
+locate link msg
+
+2016/04/12 22:18:51 kkkk001(003748) 
+<Tcpip--kkkk001>  kkkk sock[0]!
+
+2016/04/12 22:18:51 kkkk001(003748) 
+<Tcpip--kkkk001> link role [3]
+
+2016/04/12 22:18:51 kkkk001(003748) 
+<Tcpip--kkkk001> try connect to 127.0.0.1:7006 with local port=0...
+
+2016/04/12 22:18:51 kkkk001(003748) 
+<Tcpip--kkkk001> tcp_connet_server() failed:Connection refused! ip=[127.0.0.1] ,port=[7006]
+
+2016/04/12 22:18:59 kkkk001(003748) 
+create socket succ! sockid=[0]
+
+2016/04/12 22:18:59 kkkk001(003748) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:59 kkkk001(003748) 
+ finilsh send data =[SYSICOMML kkkk 001 3 connect ok[22:18:59]]
+
+2016/04/12 22:18:59 kkkk001(003748) 
+check_flag =1
+
+2016/04/12 22:19:16 kkkk001(003748) 
+SendCheckNetMsg thread exit
+
+2016/04/12 22:19:16 kkkk001(003748) 
+<Tcpip--kkkk001> catch a signal 0 !
+
+2016/04/12 22:19:16 kkkk001(003748) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:19:16 kkkk001(003748) 
+ finilsh send data =[SYSICOMML kkkk 001 0 disconnect[22:19:16]]
+
+2016/04/12 22:19:16 kkkk001(003748) 
+notify end
+
+2016/04/12 22:19:16 kkkk001(003748) 
+exit system signo =0
+

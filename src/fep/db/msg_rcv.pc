@@ -1,0 +1,73 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/msg_rcv.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+/*
+ *  Function:  msgRcvInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcTrans   - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int MsgRcvOpr(int oprType, msg_rcv_def *p_msgRcvInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+	msg_rcv_def 	msgRcvInf;
+    EXEC SQL END DECLARE SECTION;
+
+    switch ( oprType )
+    {
+	    case GLB_DB_INSERT1:
+	    	memcpy(&msgRcvInf, p_msgRcvInf, sizeof(msg_rcv_def));
+			ADJUST_STRING(msgRcvInf.phone    )
+			ADJUST_STRING(msgRcvInf.msg_txt  )
+			ADJUST_STRING(msgRcvInf.send_time)
+			ADJUST_STRING(msgRcvInf.ext)
+			EXEC SQL INSERT INTO MSG_RCV(PHONE, MSG_TEXT, SEND_TIME, EXT) VALUES
+			(
+				:msgRcvInf.phone    ,
+				:msgRcvInf.msg_txt  ,
+				:msgRcvInf.send_time,
+				:msgRcvInf.ext
+			);
+	        *p_sqlCode = sqlca.sqlcode;
+			if(sqlca.sqlcode != 0)
+	        {
+	            glb_Log(0,0,"<MSG_RCV.pc:MsgRcvOpr:INSERT1>Insert Record Failure. "
+	            			"(PHONE:%s,MSG_TEXT:%s,SEND_TIME:%s, EXT:%s) Error.\n"
+	            			"[sqlCode:%d]errmsg:\n----------\n%s\n", 
+	            			msgRcvInf.phone, msgRcvInf.msg_txt, msgRcvInf.send_time, msgRcvInf.ext, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc);
+	        }
+	        EXEC SQL COMMIT WORK ;
+	        break;
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+    return 0;
+}
+
+

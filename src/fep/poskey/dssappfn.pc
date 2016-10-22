@@ -1,0 +1,2042 @@
+#include <stdio.h>
+#include <errno.h>
+#include <time.h>
+#include <string.h>
+#include "iso8583.h"
+EXEC SQL INCLUDE sqlca;
+extern struct ISO_8583 iso8583_conf[128];/** 终端接口  */
+
+
+
+int getseqno()
+{
+   EXEC SQL BEGIN DECLARE SECTION;
+       long nseq;
+   EXEC SQL END DECLARE SECTION;
+   
+   exec sql select Seqno into :nseq  from account_seqno for update ;
+   if ( sqlca.sqlcode !=0)
+   {
+     	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select account_seqno table error ! sqlcode =%d ", sqlca.sqlcode);
+     	exec sql commit;
+      return -1;
+   }
+   if ( nseq <9999 ) nseq++;
+   else nseq =1;
+   exec sql update  account_seqno set seqno = :nseq ;
+   if ( sqlca.sqlcode !=0)
+   {
+     	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update account_seqno table error ! sqlcode =%d ", sqlca.sqlcode);
+     	exec sql commit;
+      return -1;
+   }
+   exec sql commit;
+   return nseq;
+}
+
+int getop(char * organcode,char * m_id,char * m_passwd,char * m_name,char * m_limit)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+      char x_name[200+1],x_limit[200+1];
+  EXEC SQL END DECLARE SECTION;
+   
+  exec sql select op_name,op_limit into :x_name,:x_limit from opinfo where op_id = :m_id and op_passwd = :m_passwd and organcode=:organcode;
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select opinfo table error ! sqlcode =%d ", sqlca.sqlcode);
+  	return -1;
+  }
+  Trim(x_name);
+  Trim(x_limit);
+  
+	strcpy(m_name,x_name);
+	strcpy(m_limit,x_limit);
+	
+  return 1;
+}
+
+int setoppwd(char caopid[],char caopmkey[],char caopwkey[])
+{
+    if ( strlen(caopmkey) <16 ||strlen(caopwkey) <16 )
+        return -1;
+    exec sql update msg_op_login set op_mkey=:caopmkey,op_wkey=:caopwkey where op_id=:caopid ;
+    if ( sqlca.sqlcode !=0)
+	  {
+    	  	/*参数错误*/
+    	 dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, 
+    	      "update msg_op_login table error ! \n op_id=%s \n op_mkey=%s \n op_wkey=%s", 
+    	       caopid,caopmkey,caopwkey);
+           return -2;
+	  }
+	  exec sql commit;
+    return 1;
+}
+
+int getparainfo(char * type_id,char * para_id,char * m_bz,char * infobuff,char * op_area,char * term_expand,char * term_join,char * term_keep,char * op_type)
+{
+	
+	char m_record[200+1];
+	int m_len=0;
+	
+	EXEC SQL BEGIN DECLARE SECTION;
+      char x_type_id[6+1];
+      char x_type_name[200+1];
+      char x_para_id[6+1];
+      char x_para_name[200+1];
+      char x_memo[200+1];
+      
+      char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	dcs_debug(0,0,"getparainfo begin");
+	
+	if(memcmp(type_id,"000000",6)==0)
+	{
+		dcs_log(0,0,"查询资源类型\n");
+		sprintf(m_sql_str,"SELECT type_id,type_name,para_id,para_name,memo from msg_sys_info where para_id='%s'",type_id);
+		
+		EXEC SQL PREPARE aa FROM :m_sql_str;
+		EXEC SQL DECLARE para_cursor1 CURSOR FOR aa;
+		EXEC SQL OPEN para_cursor1;
+	}
+	else if(memcmp(para_id,"000000",6)==0)
+	{
+		dcs_log(0,0,"查询资源\n");
+		if(memcmp(op_type,"01",2)==0)
+		{
+			sprintf(m_sql_str,"SELECT type_id,type_name,para_id,para_name,memo from msg_sys_info where type_id='%s' and para_id!='%s'",type_id,para_id);
+		}
+		else	if(memcmp(op_type,"02",2)==0)
+		{
+			if(memcmp(type_id,"000001",6)==0)
+				sprintf(m_sql_str,"SELECT type_id,type_name,para_id,para_name,memo from msg_sys_info where type_id='%s' and para_id!='%s' and para_id in (%s)",type_id,para_id,op_area);
+			else	if(memcmp(type_id,"000002",6)==0)
+				sprintf(m_sql_str,"SELECT type_id,type_name,para_id,para_name,memo from msg_sys_info where type_id='%s' and para_id!='%s' and para_id in (%s)",type_id,para_id,term_expand);
+			else	if(memcmp(type_id,"000004",6)==0)
+				sprintf(m_sql_str,"SELECT type_id,type_name,para_id,para_name,memo from msg_sys_info where type_id='%s' and para_id!='%s' and para_id in (%s)",type_id,para_id,term_join);
+			else	if(memcmp(type_id,"000005",6)==0)
+				sprintf(m_sql_str,"SELECT type_id,type_name,para_id,para_name,memo from msg_sys_info where type_id='%s' and para_id!='%s' and para_id in (%s)",type_id,para_id,term_keep);
+			else	sprintf(m_sql_str,"SELECT type_id,type_name,para_id,para_name,memo from msg_sys_info where type_id='%s' and para_id!='%s'",type_id,para_id);
+		}
+		
+		EXEC SQL PREPARE bb FROM :m_sql_str;
+		EXEC SQL DECLARE para_cursor2 CURSOR FOR bb;
+		EXEC SQL OPEN para_cursor2;
+	}
+	else
+	{
+		dcs_log(0,0,"查询详细数据\n");
+		sprintf(m_sql_str,"SELECT type_id,type_name,para_id,para_name,memo from msg_sys_info where type_id='%s' and para_id='%s'",type_id,para_id);
+		
+		EXEC SQL PREPARE cc FROM :m_sql_str;
+		EXEC SQL DECLARE para_cursor3 CURSOR FOR cc;
+		EXEC SQL OPEN para_cursor3;
+	}
+		
+	dcs_log(0,0,"SQL:%s",m_sql_str);
+	
+	for(;;)
+	{
+		/*EXEC SQL WHENEVER NOT FOUND DO break;*/
+		
+		if(memcmp(type_id,"000000",6)==0)
+		{
+			EXEC SQL FETCH para_cursor1
+				INTO :x_type_id,:x_type_name,:x_para_id,:x_para_name,x_memo;
+		}
+		else if(memcmp(para_id,"000000",6)==0)
+		{
+			EXEC SQL FETCH para_cursor2
+				INTO :x_type_id,:x_type_name,:x_para_id,:x_para_name,x_memo;
+		}
+		else
+		{
+			EXEC SQL FETCH para_cursor3
+				INTO :x_type_id,:x_type_name,:x_para_id,:x_para_name,x_memo;
+		}
+		
+		if ( sqlca.sqlcode ==1403)	break;
+		else	if ( sqlca.sqlcode !=0)	return -1;
+			
+  	Trim(x_type_id);
+  	Trim(x_type_name);
+  	Trim(x_para_id);
+  	Trim(x_para_name);
+  	Trim(x_memo);
+  	
+		/*dcs_log(0,0,"type_id:[%s],para_id:[%s],type_name:[%s],para_name:[%s],memo:[%s]",x_type_id,x_para_id,x_type_name,x_para_name,x_memo);*/
+		
+		memset(m_record,0,sizeof(m_record));
+		
+		if(memcmp(m_bz,"0",1)==0)
+		{
+			sprintf(m_record,"%s,%s,%s,%s;",x_type_id,x_para_id,x_type_name,x_para_name);
+			dcs_log(0,0,"%s,%s,%s,%s;",x_type_id,x_para_id,x_type_name,x_para_name);
+		}
+		else if(memcmp(m_bz,"1",1)==0)
+		{
+			sprintf(m_record,"%s,%s,%s,%s,%s;",x_type_id,x_para_id,x_type_name,x_para_name,x_memo);
+			dcs_log(0,0,"%s,%s,%s,%s,%s;",x_type_id,x_para_id,x_type_name,x_para_name,x_memo);
+		}
+		
+		memcpy(infobuff+m_len,m_record,strlen(m_record));
+		
+		m_len=m_len+strlen(m_record);
+	}
+
+	if(memcmp(type_id,"000000",6)==0)
+		EXEC SQL CLOSE para_cursor1;
+	else if(memcmp(para_id,"000000",6)==0)
+		EXEC SQL CLOSE para_cursor2;
+	else
+		EXEC SQL CLOSE para_cursor3;
+   
+  /*dcs_log(0,0,"[%s]",infobuff);*/
+  
+  return 1;
+}
+
+int addparainfo(char * type_id,char * para_id,char * m_name,char * memo)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+      char m_type_name[200+1];
+  EXEC SQL END DECLARE SECTION;
+   
+	int typeid,paraid;
+
+	char m_type_id[6+1];
+	char m_para_id[6+1];
+
+	
+	memset(m_type_id,0,sizeof(m_type_id));
+	memset(m_para_id,0,sizeof(m_para_id));
+	
+	
+	if ( memcmp(type_id,"000000",6)==0)
+	{
+		typeid=1;
+		for(;;)
+		{
+			sprintf(m_type_id,"%06d",typeid);
+			memcpy(m_para_id,"000000",6);
+  		exec sql select type_id from msg_sys_info where type_id = :m_type_id and para_id = :m_para_id;
+			if ( sqlca.sqlcode !=0)	break;
+			typeid++;
+	  }
+	  dcs_log(0,0,"msg_sys_info add\ntype_id:[%s],type_name:[%s],para_id:[%s]",m_type_id,m_name,m_para_id);
+	  
+		exec sql insert into msg_sys_info(type_id,type_name,para_id,memo) values(:m_type_id,:m_name,:m_para_id,:memo);
+			
+    if ( sqlca.sqlcode == -1 )
+	  {
+	  	dcs_log(0,0,"msg_sys_info 交易记录重复!\ntype_id:[%s],type_name:[%s],para_id:[%s],memo:[%s]",
+	              m_type_id,m_name,m_para_id,memo);
+	    return -1;
+	  }
+	  else if ( sqlca.sqlcode != 0 )
+	  {
+	  	dcs_log(0,0,"msg_sys_info 写数据库失败!\ntype_id:[%s],type_name:[%s],para_id:[%s],memo:[%s]",
+	              m_type_id,m_name,m_para_id,memo);
+	  	         
+	  	return -2;
+	  }
+	  exec sql commit;
+	  dcs_debug(0,0,"msg_sys_info 写数据库成功");
+  
+  }
+  else	if ( memcmp(para_id,"000000",6)==0)
+  {
+  	exec sql select type_name into :m_type_name from msg_sys_info where type_id=:type_id and para_id=:para_id;
+  	if ( sqlca.sqlcode !=0)
+  	{
+	  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_sys_info table error ! sqlcode =%d ", sqlca.sqlcode);
+  		return -1;
+  	}
+  	Trim(m_type_name);
+  
+		paraid=1;
+		for(;;)
+		{
+			sprintf(m_para_id,"%06d",paraid);
+			
+  		exec sql select para_id from msg_sys_info where type_id = :type_id and para_id = :m_para_id;
+			if ( sqlca.sqlcode !=0)	break;
+			paraid++;
+	  }
+	  dcs_log(0,0,"msg_sys_info add\ntype_id:[%s],type_name:[%s],para_id:[%s],para_name:[%s],memo:[%s]",type_id,m_type_name,m_para_id,m_name,memo);
+	  
+		exec sql insert into msg_sys_info(type_id,type_name,para_id,para_name,memo) values(:type_id,:m_type_name,:m_para_id,:m_name,:memo);
+			
+    if ( sqlca.sqlcode == -1 )
+	  {
+	  	dcs_log(0,0,"msg_sys_info 交易记录重复!\ntype_id:[%s],type_name:[%s],para_id:[%s],para_name:[%s],memo:[%s]",
+	              type_id,m_type_name,m_para_id,m_name,memo);
+	    return -1;
+	  }
+	  else if ( sqlca.sqlcode != 0 )
+	  {
+	  	dcs_log(0,0,"msg_sys_info 写数据库失败!\ntype_id:[%s],type_name:[%s],para_id:[%s],para_name:[%s],memo:[%s]",
+	              type_id,m_type_name,m_para_id,m_name,memo);
+	  	         
+	  	return -2;
+	  }
+	  exec sql commit;
+	  dcs_debug(0,0,"msg_sys_info 写数据库成功");  
+  }
+	
+	return 1;
+
+
+}
+
+int modiparainfo(char * type_id,char * para_id,char * m_name,char * memo)
+{
+	if ( memcmp(para_id,"000000",6)==0)
+	{
+		exec sql update  msg_sys_info set type_name = :m_name,memo = :memo where type_id=:type_id and para_id=:para_id ;
+   	if ( sqlca.sqlcode !=0)
+   	{
+    	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_sys_info table error ! sqlcode =%d ", sqlca.sqlcode);
+     	exec sql commit;
+      return -1;
+   	}
+   	exec sql commit;	
+	  dcs_debug(0,0,"msg_sys_info 写数据库成功");  
+   	
+	}
+	else
+	{
+		exec sql update  msg_sys_info set para_name = :m_name,memo = :memo where type_id=:type_id and para_id=:para_id ;
+   	if ( sqlca.sqlcode !=0)
+   	{
+    	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_sys_info table error ! sqlcode =%d ", sqlca.sqlcode);
+     	exec sql commit;
+      return -1;
+   	}
+   	exec sql commit;	
+	  dcs_debug(0,0,"msg_sys_info 写数据库成功");  
+	}
+	
+	return 1;
+}
+
+
+int deleparainfo(char * type_id,char * para_id)
+{
+	if ( memcmp(para_id,"000000",6)==0)
+	{
+		exec sql delete from msg_sys_info where type_id=:type_id ;
+   	if ( sqlca.sqlcode !=0)
+   	{
+    	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "delete from msg_sys_info table error ! sqlcode =%d ", sqlca.sqlcode);
+     	exec sql commit;
+      return -1;
+   	}
+   	exec sql commit;	
+	  dcs_debug(0,0,"msg_sys_info 写数据库成功");  
+   	
+	}
+	else
+	{
+		exec sql delete from msg_sys_info where type_id=:type_id and para_id=:para_id ;
+   	if ( sqlca.sqlcode !=0)
+   	{
+    	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "delete from msg_sys_info table error ! sqlcode =%d ", sqlca.sqlcode);
+     	exec sql commit;
+      return -1;
+   	}
+   	exec sql commit;	
+	  dcs_debug(0,0,"msg_sys_info 写数据库成功");  
+	}
+	
+	return 1;
+}
+
+int getkey(char * m_id,char * m_mkey,char * m_wkey)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+      char x_mkey[16+1],x_wkey[16+1];
+  EXEC SQL END DECLARE SECTION;
+   
+  exec sql select op_mkey,op_wkey into :x_mkey,:x_wkey from msg_op_login where op_id = :m_id;
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_op_login table error ! sqlcode =%d ", sqlca.sqlcode);
+  	return -1;
+  }
+  
+  Trim(x_mkey);
+  Trim(x_wkey);
+	strcpy(m_mkey,x_mkey);
+	strcpy(m_wkey,x_wkey);
+	
+  return 1;
+}
+
+int getuserinfo(char *whe,char *infobuff,int begin_page,int end_page,char *over_bz,char *op_area,char *term_expand,char *term_join,char *term_keep,char *op_type)
+{
+	
+	char m_record[200+1];
+	int m_len=0;
+	int m_page=1;
+	
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_user_id[6+1];
+		char x_user_name[200+1];
+		char x_area[6+1];
+		char x_expand[6+1];
+		char x_tel_number[200+1];
+		char x_state[1+1];
+		
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	if(memcmp(op_type,"01",2)==0)
+	{
+		if(strlen(whe)==0)
+			sprintf(m_sql_str,"SELECT user_id,user_name,area,expand,tel_number,state from msg_user_info");
+		else	sprintf(m_sql_str,"SELECT user_id,user_name,area,expand,tel_number,state from msg_user_info where %s",whe);
+	}
+	else	if(memcmp(op_type,"02",2)==0)
+	{
+		if(strlen(whe)==0)
+			sprintf(m_sql_str,"SELECT user_id,user_name,area,expand,tel_number,state from msg_user_info where area in (%s) and expand in (%s)",op_area,term_expand);
+		else	sprintf(m_sql_str,"SELECT user_id,user_name,area,expand,tel_number,state from msg_user_info where %s and area in (%s) and expand in (%s)",whe,op_area,term_expand);
+	}
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	EXEC SQL PREPARE s FROM :m_sql_str;
+	
+	EXEC SQL DECLARE s_cursor CURSOR FOR s;
+		
+	EXEC SQL OPEN s_cursor;
+	
+	for(;;)
+	{
+		/*EXEC SQL WHENEVER NOT FOUND DO break;*/
+		
+		EXEC SQL FETCH s_cursor
+				INTO :x_user_id,:x_user_name,:x_area,:x_expand,:x_tel_number,:x_state;
+				
+		if ( sqlca.sqlcode ==1403)	break;
+		else	if ( sqlca.sqlcode !=0)	return -1;
+
+		if(m_page>=begin_page && m_page<end_page)
+		{
+			Trim(x_user_id);
+  		Trim(x_user_name);
+  		Trim(x_area);
+  		Trim(x_expand);
+  		Trim(x_tel_number);
+  		Trim(x_state);
+
+			memset(m_record,0,sizeof(m_record));
+		
+			sprintf(m_record,"%s,%s,%s,%s,%s,%s;",x_user_id,x_user_name,x_area,x_expand,x_tel_number,x_state);
+			dcs_log(0,0,"%s,%s,%s,%s,%s,%s;",x_user_id,x_user_name,x_area,x_expand,x_tel_number,x_state);
+		
+			memcpy(infobuff+m_len,m_record,strlen(m_record));
+		
+			m_len=m_len+strlen(m_record);
+		}
+		
+		m_page=m_page+1;
+	}
+	
+	if(m_page>=end_page)	memcpy(over_bz,"0",1);
+	else	memcpy(over_bz,"1",1);
+	
+	EXEC SQL CLOSE s_cursor;
+   
+  /*dcs_log(0,0,"[%s]",infobuff);*/
+  
+  return 1;
+}
+
+int getuserinfodeta(char *user_id,char * user_name,char * cover,char * tel_type,char * tel_number,char * address,char * tel_contact,char * certificate_type,char * certificate_number,char * area,char * expand,char * memo)
+{
+	char m_record[200+1];
+	int m_len=0;
+		
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_user_name[200+1];
+		char x_cover[4+1];
+		char x_tel_type[200+1];
+		char x_tel_number[200+1];
+		char x_address[200+1];
+		char x_tel_contact[200+1];
+		char x_certificate_type[200+1];
+		char x_certificate_number[200+1];
+		char x_area[6+1];
+		char x_expand[6+1];
+		char x_memo[200+1];
+	
+	EXEC SQL END DECLARE SECTION;
+	
+	
+	exec sql select user_name,cover,tel_type,tel_number,address,tel_contact,certificate_type,certificate_number,area,expand,memo into :x_user_name,:x_cover,:x_tel_type,:x_tel_number,:x_address,:x_tel_contact,:x_certificate_type,:x_certificate_number,:x_area,:x_expand,:x_memo from msg_user_info where user_id=:user_id;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_user_info table error ! sqlcode =%d ", sqlca.sqlcode);
+  	return -1;
+  }
+	
+	Trim(x_user_name);
+	Trim(x_cover);
+	Trim(x_tel_type);
+	Trim(x_tel_number);
+	Trim(x_address);
+	Trim(x_tel_contact);
+	Trim(x_certificate_type);
+	Trim(x_certificate_number);
+	Trim(x_area);
+	Trim(x_expand);
+	Trim(x_memo);
+	
+	strcpy(user_name,x_user_name);
+	strcpy(cover,x_cover);
+	strcpy(tel_type,x_tel_type);
+	strcpy(tel_number,x_tel_number);
+	strcpy(address,x_address);
+	strcpy(tel_contact,x_tel_contact);
+	strcpy(certificate_type,x_certificate_type);
+	strcpy(certificate_number,x_certificate_number);
+	strcpy(area,x_area);
+	strcpy(expand,x_expand);
+	strcpy(memo,x_memo);
+   
+  /*dcs_log(0,0,"[%s]",infobuff);*/
+  
+  return 1;
+}
+
+int adduserinfo(char * user_name,char * cover,char * tel_type,char * tel_number,char * address,char * tel_contact,char * certificate_type,char * certificate_number,char * area,char * expand,char * memo,char *errmsg)
+{
+	int id;
+	
+	char m_id[6+1];
+	
+	memset(m_id,0,sizeof(m_id));
+	
+	/*id=1;
+	for(;;)
+	{
+		sprintf(m_id,"%06d",id);
+		
+  	exec sql select user_id from msg_user_info where user_id = :m_id;
+		if ( sqlca.sqlcode !=0)	break;
+		id++;
+	}*/
+	exec sql select max(user_id) into:m_id from msg_user_info;
+	id=atoi(m_id)+1;
+	sprintf(m_id,"%06d",id);
+	dcs_debug(0,0,"max user id =%d",id-1);
+	
+	dcs_debug(0,0,"msg_user_info \nuser_name:[%s],cover:[%s],tel_type:[%s],tel_number:[%s],address:[%s],tel_contact:[%s],certificate_type:[%s],certificate_number:[%s],area:[%s],expand:[%s],memo:[%s]",
+	              user_name,cover,tel_type,tel_number,address,tel_contact,certificate_type,certificate_number,area,expand,memo);
+
+
+	exec sql insert into msg_user_info(user_id,user_name,cover,tel_type,tel_number,address,tel_contact,certificate_type,certificate_number,area,expand,memo)
+	values(:m_id,:user_name,:cover,:tel_type,:tel_number,:address,:tel_contact,:certificate_type,:certificate_number,:area,:expand,:memo);
+			
+  if ( sqlca.sqlcode == -1 )
+	{
+		dcs_log(0,0,"msg_user_info 交易记录重复!\nuser_name:[%s],cover:[%s],tel_type:[%s],tel_number:[%s],address:[%s],tel_contact:[%s],certificate_type:[%s],certificate_number:[%s],area:[%s],expand:[%s],memo:[%s]",
+	              user_name,cover,tel_type,tel_number,address,tel_contact,certificate_type,certificate_number,area,expand,memo);
+	  sprintf(errmsg,"用户资料表增加记录操作失败,发现重复记录!");
+	  return -1;
+	}
+	else if ( sqlca.sqlcode != 0 )
+	{
+		dcs_log(0,0,"msg_user_info 写数据库失败!\nuser_name:[%s],cover:[%s],tel_type:[%s],tel_number:[%s],address:[%s],tel_contact:[%s],certificate_type:[%s],certificate_number:[%s],area:[%s],expand:[%s],memo:[%s]",
+	              user_name,cover,tel_type,tel_number,address,tel_contact,certificate_type,certificate_number,area,expand,memo);
+	  sprintf(errmsg,"用户资料表增加记录操作失败!");	         
+		return -2;
+	}
+	
+	exec sql commit;
+	dcs_debug(0,0,"msg_user_info 写数据库成功");
+
+	
+	return 1;
+
+
+}
+
+/*int modiuserinfo(char * user_id,char * user_name,char * cover,char * tel_type,char * tel_number,char * address,char * tel_contact,char * certificate_type,char * certificate_number,char * area,char * expand,char * memo)*/
+int modiuserinfo(char * user_id,char * up_data)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	if(strlen(up_data)==0)	return 1;
+	else	sprintf(m_sql_str,"update msg_user_info %s where user_id='%s'",up_data,user_id);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	exec sql execute immediate :m_sql_str;
+
+	/*exec sql update  msg_user_info set user_name = :user_name,cover = :cover,tel_type = :tel_type,tel_number = :tel_number,address = :address,tel_contact = :tel_contact,certificate_type = :certificate_type,certificate_number = :certificate_number,area = :area,expand = :expand,memo = :memo where user_id=:user_id;*/
+	
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_user_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+    return -1;
+  }
+  exec sql commit;	
+	dcs_debug(0,0,"msg_user_info 写数据库成功");  
+
+	return 1;
+}
+
+int deleuserinfo(char * user_id)
+{
+	exec sql delete from msg_user_info where user_id=:user_id ;
+ 	if ( sqlca.sqlcode !=0)
+ 	{
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "delete from msg_user_info table error ! sqlcode =%d ", sqlca.sqlcode);
+   	exec sql commit;
+    return -1;
+ 	}
+ 	exec sql commit;	
+  dcs_debug(0,0,"msg_user_info 写数据库成功");  
+	
+	return 1;
+}
+
+int getpsaminfo(char *whe,char *infobuff,int begin_page,int end_page,char *over_bz,char *op_area,char *term_expand,char *term_join,char *term_keep,char *op_type)
+{
+	char m_record[200+1];
+	int m_len=0;
+	int m_page=1;
+	
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_psam_cdno[16+1];
+		char x_term_type[6+1];
+		char x_term_join[6+1];
+		char x_term_keep[6+1];
+		char x_menu_ver[6+1];
+		char x_term_event[6+1];
+		char x_term_area[6+1];
+		char x_psam_statu[1+1];
+		char x_term_e1code[6+1];
+
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	if(memcmp(op_type,"01",2)==0)
+	{
+		if(strlen(whe)==0)
+			sprintf(m_sql_str,"SELECT psam_cdno,term_type,term_join,term_keep,menu_ver,term_event,term_area,psam_statu,term_e1code from msg_psam_info");
+		else	sprintf(m_sql_str,"SELECT psam_cdno,term_type,term_join,term_keep,menu_ver,term_event,term_area,psam_statu,term_e1code from msg_psam_info where %s",whe);
+	}
+	else	if(memcmp(op_type,"02",2)==0)
+	{
+		if(strlen(whe)==0)
+			sprintf(m_sql_str,"SELECT psam_cdno,term_type,term_join,term_keep,menu_ver,term_event,term_area,psam_statu,term_e1code from msg_psam_info where term_area in (%s) and term_join in (%s) and term_keep in (%s)",op_area,term_join,term_keep);
+		else	sprintf(m_sql_str,"SELECT psam_cdno,term_type,term_join,term_keep,menu_ver,term_event,term_area,psam_statu,term_e1code from msg_psam_info where %s and term_area in (%s) and term_join in (%s) and term_keep in (%s)",whe,op_area,term_join,term_keep);
+	}
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	EXEC SQL PREPARE x FROM :m_sql_str;
+	
+	EXEC SQL DECLARE x_cursor CURSOR FOR x;
+		
+	EXEC SQL OPEN x_cursor;
+
+	for(;;)
+	{
+		/*EXEC SQL WHENEVER NOT FOUND DO break;*/
+		
+		EXEC SQL FETCH x_cursor
+				INTO :x_psam_cdno,:x_term_type,:x_term_join,:x_term_keep,:x_menu_ver,:x_term_event,:x_term_area,:x_psam_statu,:x_term_e1code;
+				
+		if ( sqlca.sqlcode ==1403)	break;
+		else	if ( sqlca.sqlcode !=0)	return -1;
+
+		if(m_page>=begin_page && m_page<end_page)
+		{
+			Trim(x_psam_cdno);
+			Trim(x_term_type);
+			Trim(x_term_join);
+			Trim(x_term_keep);
+			Trim(x_menu_ver);
+			Trim(x_term_event);
+			Trim(x_term_area);
+			Trim(x_psam_statu);
+			Trim(x_term_e1code);
+
+			memset(m_record,0,sizeof(m_record));
+		
+			sprintf(m_record,"%s,%s,%s,%s,%s,%s,%s,%s,%s;",x_psam_cdno,x_term_type,x_term_join,x_term_keep,x_menu_ver,x_term_event,x_term_area,x_psam_statu,x_term_e1code);
+		
+			dcs_log(0,0,"%s,%s,%s,%s,%s,%s,%s,%s,%s;",x_psam_cdno,x_term_type,x_term_join,x_term_keep,x_menu_ver,x_term_event,x_term_area,x_psam_statu,x_term_e1code);
+		
+			memcpy(infobuff+m_len,m_record,strlen(m_record));
+		
+			m_len=m_len+strlen(m_record);
+		}
+		m_page=m_page+1;
+	}
+	
+	if(m_page>=end_page)	memcpy(over_bz,"0",1);
+	else	memcpy(over_bz,"1",1);
+
+	EXEC SQL CLOSE x_cursor;
+   
+  /*dcs_log(0,0,"[%s]",infobuff);*/
+  
+  return 1;
+}
+
+int getpsaminfodeta(char *psam_cdno,char *term_type,char *term_join,char *term_keep,char *menu_ver,char *term_event,char *term_area,char *psam_statu,char *term_e1code)
+{
+	char m_record[200+1];
+	int m_len=0;
+		
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_psam_cdno[16+1];
+		char x_term_type[6+1];
+		char x_term_join[6+1];
+		char x_term_keep[6+1];
+		char x_menu_ver[6+1];
+		char x_term_event[6+1];
+		char x_term_area[6+1];
+		char x_psam_statu[1+1];
+		char x_term_e1code[6+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	
+	exec sql select psam_cdno,term_type,term_join,term_keep,menu_ver,term_event,term_area,psam_statu,term_e1code into :x_psam_cdno,:x_term_type,:x_term_join,:x_term_keep,:x_menu_ver,:x_term_event,:x_term_area,:x_psam_statu,:x_term_e1code from msg_psam_info where psam_cdno=:psam_cdno;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_psam_info table error ! sqlcode =%d ", sqlca.sqlcode);
+  	return -1;
+  }
+	
+	Trim(x_psam_cdno);
+	Trim(x_term_type);
+	Trim(x_term_join);
+	Trim(x_term_keep);
+	Trim(x_menu_ver);
+	Trim(x_term_event);
+	Trim(x_term_area);
+	Trim(x_psam_statu);
+	Trim(x_term_e1code);
+	
+	strcpy(psam_cdno,x_psam_cdno);
+	strcpy(term_type,x_term_type);
+	strcpy(term_join,x_term_join);
+	strcpy(term_keep,x_term_keep);
+	strcpy(menu_ver,x_menu_ver);
+	strcpy(term_event,x_term_event);
+	strcpy(term_area,x_term_area);
+	strcpy(psam_statu,x_psam_statu);
+	strcpy(term_e1code,x_term_e1code);
+   
+  /*dcs_log(0,0,"[%s]",infobuff);*/
+  
+  return 1;
+}
+
+int addpsaminfo(char *psam_cdno,char *term_type,char *term_join,char *term_keep,char *menu_ver,char *term_event,char *term_area,char *term_e1code,char *errmsg)
+{
+	char psam_statu[1+1];
+	
+  exec sql select samc_cdno from samcard_info where samc_cdno = :psam_cdno;
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select samcard_info table error ! samc_cdno =[%s],sqlcode =%d ",psam_cdno, sqlca.sqlcode);
+  	sprintf(errmsg,"终端管理系统平台中的PSAM卡资料表没有相关PSAM卡信息,增加记录失败!");
+  	return -1;
+  }
+	
+	memset(psam_statu,0,sizeof(psam_statu));
+	
+	memcpy(psam_statu,"1",1);
+
+
+	exec sql insert into msg_psam_info(psam_cdno,term_type,term_join,term_keep,menu_ver,term_event,term_area,psam_statu,term_e1code)
+	values(:psam_cdno,:term_type,:term_join,:term_keep,:menu_ver,:term_event,:term_area,:psam_statu,:term_e1code);
+			
+  if ( sqlca.sqlcode == -1 )
+	{
+		dcs_log(0,0,"msg_psam_info 交易记录重复!\npsam_cdno:[%s],term_type:[%s],term_join:[%s],term_keep:[%s],menu_ver:[%s],term_event:[%s],term_area:[%s],psam_statu:[%s],term_e1code:[%s]",
+	              psam_cdno,term_type,term_join,term_keep,menu_ver,term_event,term_area,psam_statu,term_e1code);
+	  sprintf(errmsg,"PSAM卡资料表增加记录操作失败,发现重复记录");
+	  return -1;
+	}
+	else if ( sqlca.sqlcode != 0 )
+	{
+		dcs_log(0,0,"msg_psam_info 写数据库失败!\npsam_cdno:[%s],term_type:[%s],term_join:[%s],term_keep:[%s],menu_ver:[%s],term_event:[%s],term_area:[%s],psam_statu:[%s],term_e1code:[%s]",
+	              psam_cdno,term_type,term_join,term_keep,menu_ver,term_event,term_area,psam_statu,term_e1code);
+	  sprintf(errmsg,"PSAM卡资料表增加记录失败!");
+		return -2;
+	}
+	
+	exec sql commit;
+	dcs_debug(0,0,"msg_psam_info 增加记录成功");
+
+	
+	return 1;
+
+
+}
+
+
+int modipsaminfo(char * psam_cdno,char * up_data)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	if(strlen(up_data)==0)	return 1;
+	else	sprintf(m_sql_str,"update msg_psam_info %s where psam_cdno='%s'",up_data,psam_cdno);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	exec sql execute immediate :m_sql_str;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_psam_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+    return -1;
+  }
+  exec sql commit;	
+	dcs_debug(0,0,"msg_psam_info 写数据库成功");  
+
+	return 1;
+}
+
+int delepsaminfo(char * psam_cdno)
+{
+	exec sql delete from msg_psam_info where psam_cdno=:psam_cdno ;
+ 	if ( sqlca.sqlcode !=0)
+ 	{
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "delete from msg_psam_info table error ! sqlcode =%d ", sqlca.sqlcode);
+   	exec sql commit;
+    return -1;
+ 	}
+ 	exec sql commit;	
+  dcs_debug(0,0,"msg_user_info 写数据库成功");  
+	
+	return 1;
+}
+
+int getterminfo(char *whe,char *infobuff,int begin_page,int end_page,char *over_bz,char *op_area,char *term_expand,char *term_join,char *term_keep,char *op_type)
+{
+	char m_record[200+1];
+	int m_len=0;
+	int m_page=1;
+	
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_psam_cdno[16+1];
+		char x_user_name[200+1];
+		char x_tel_number[200+1];
+		char x_area_id[6+1];
+		char x_term_statu[2+1];
+		char x_up_date[8+1];
+		char x_op_statu[4+1];
+		char x_extra[200+1];
+		char x_term_e1code[6+1];
+		char x_term_verid[6+1];
+
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+
+	if(memcmp(op_type,"01",2)==0)
+	{
+		if(strlen(whe)==0)
+			sprintf(m_sql_str,"SELECT psam_cdno,user_name,tel_number,area_id,term_statu,up_date,op_statu,extra,term_e1code,term_verid from msg_term_info");
+		else	sprintf(m_sql_str,"SELECT psam_cdno,user_name,tel_number,area_id,term_statu,up_date,op_statu,extra,term_e1code,term_verid from msg_term_info where %s",whe);
+	}
+	else	if(memcmp(op_type,"02",2)==0)
+	{
+		if(strlen(whe)==0)
+			sprintf(m_sql_str,"SELECT psam_cdno,user_name,tel_number,area_id,term_statu,up_date,op_statu,extra,term_e1code,term_verid from msg_term_info where area_id in (%s)",op_area);
+		else	sprintf(m_sql_str,"SELECT psam_cdno,user_name,tel_number,area_id,term_statu,up_date,op_statu,extra,term_e1code,term_verid from msg_term_info where %s and area_id in (%s)",whe,op_area);
+	}
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	EXEC SQL PREPARE y FROM :m_sql_str;
+	
+	EXEC SQL DECLARE y_cursor CURSOR FOR y;
+		
+	EXEC SQL OPEN y_cursor;
+
+	for(;;)
+	{
+		/*EXEC SQL WHENEVER NOT FOUND DO break;*/
+		
+		EXEC SQL FETCH y_cursor
+				INTO :x_psam_cdno,:x_user_name,:x_tel_number,:x_area_id,:x_term_statu,:x_up_date,:x_op_statu,:x_extra,:x_term_e1code,x_term_verid;
+				
+		if ( sqlca.sqlcode ==1403)	break;
+		else	if ( sqlca.sqlcode !=0)	return -1;
+
+		if(m_page>=begin_page && m_page<end_page)
+		{
+			Trim(x_psam_cdno);
+			Trim(x_user_name);
+			Trim(x_tel_number);
+			Trim(x_area_id);
+			Trim(x_term_statu);
+			Trim(x_up_date);
+			Trim(x_op_statu);
+			Trim(x_extra);
+			Trim(x_term_e1code);
+			Trim(x_term_verid);
+
+			memset(m_record,0,sizeof(m_record));
+		
+			sprintf(m_record,"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s;",x_psam_cdno,x_user_name,x_tel_number,x_area_id,x_term_statu,x_up_date,x_op_statu,x_extra,x_term_e1code,x_term_verid);
+		
+			dcs_log(0,0,"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s;",x_psam_cdno,x_user_name,x_tel_number,x_area_id,x_term_statu,x_up_date,x_op_statu,x_extra,x_term_e1code,x_term_verid);
+		
+			memcpy(infobuff+m_len,m_record,strlen(m_record));
+		
+			m_len=m_len+strlen(m_record);
+		}
+		m_page=m_page+1;
+	}
+	
+	if(m_page>=end_page)	memcpy(over_bz,"0",1);
+	else	memcpy(over_bz,"1",1);
+
+	EXEC SQL CLOSE y_cursor;
+   
+  /*dcs_log(0,0,"[%s]",infobuff);*/
+  
+  return 1;
+}
+
+int delemsgterminfo(char * psam_cdno,char * tel_number)
+{
+	dcs_log(0,0,"delete from msg_term_info where psam_cdno=%s and tel_number=%s",psam_cdno,tel_number);
+	
+	exec sql delete from msg_term_info where psam_cdno=:psam_cdno and tel_number=:tel_number;
+ 	if ( sqlca.sqlcode !=0)
+ 	{
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "delete from msg_term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+   	exec sql commit;
+    return -1;
+ 	}
+ 	exec sql commit;	
+  dcs_debug(0,0,"msg_term_info 删除记录成功");  
+	
+	return 1;
+}
+
+int addmsgterminfo(char *psam_cdno,char *tel_number,char *term_statu,char *errmsg)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+      char user_name[200+1];
+      char area_id[6+1];
+      char up_date[14+1];
+      char op_statu[4+1];
+      char menu_ver[6+1];
+      char term_e1code[6+1];
+  EXEC SQL END DECLARE SECTION;
+  
+  exec sql select user_name,area into :user_name,:area_id from msg_user_info where tel_number = :tel_number;
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_user_info table error ! sqlcode =%d ", sqlca.sqlcode);
+  	sprintf(errmsg,"用户资料表没有记录,操作失败!");
+  	return -1;
+  }
+  
+  Trim(user_name);
+  Trim(area_id);
+  
+  exec sql select menu_ver,term_e1code into :menu_ver,:term_e1code from msg_psam_info where psam_cdno = :psam_cdno;
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_psam_info table error ! sqlcode =%d ", sqlca.sqlcode);
+  	sprintf(errmsg,"PSAM卡资料表没有记录,操作失败!");
+  	return -1;
+  }
+  
+  Trim(menu_ver);
+  
+	
+	struct  tm *tm;   time_t  t;	
+
+	time(&t);
+	tm = localtime(&t);
+	sprintf(up_date,"%04d%02d%02d%02d%02d%02d",tm->tm_year+1900,tm->tm_mon+1,tm->tm_mday,tm->tm_hour,tm->tm_min,tm->tm_sec);
+
+	
+	sprintf(op_statu,"0007");
+	
+	exec sql select tel_number from msg_term_info where psam_cdno = :psam_cdno and tel_number = :tel_number;
+	if ( sqlca.sqlcode !=0)
+	{
+		exec sql insert into msg_term_info(psam_cdno,tel_number,term_statu,user_name,area_id,up_date,op_statu,term_verid,term_e1code)
+			values(:psam_cdno,:tel_number,:term_statu,:user_name,:area_id,:up_date,:op_statu,:menu_ver,:term_e1code);
+	
+		dcs_log(0,0,"psam_cdno:[%s]\ntel_number:[%s]\nterm_statu:[%s]\nuser_name:[%s]\narea_id:[%s]\nup_date:[%s]\nop_statu:[%s]\nterm_verid=[%s]\nterm_e1code=[%s]",psam_cdno,tel_number,term_statu,user_name,area_id,up_date,op_statu,menu_ver,term_e1code);
+			
+  	if ( sqlca.sqlcode == -1 )
+		{
+			dcs_log(0,0,"msg_term_info 交易记录重复!\npsam_cdno:[%s],tel_number:[%s],term_statu:[%s]",
+	              psam_cdno,tel_number,term_statu);
+	    sprintf(errmsg,"终端资料表增加记录操作失败,发现重复记录!");
+	  	return -1;
+		}
+		else if ( sqlca.sqlcode != 0 )
+		{
+			dcs_log(0,0,"msg_term_info 写数据库失败!\npsam_cdno:[%s],tel_number:[%s],term_statu:[%s]",
+	              psam_cdno,tel_number,term_statu);
+	  	sprintf(errmsg,"终端资料表增加记录操作失败!");
+			return -2;
+		}
+		dcs_debug(0,0,"msg_term_info 增加记录成功");
+	}
+	else
+	{
+		exec sql update msg_term_info set term_statu=:term_statu,user_name=:user_name,area_id=:area_id,up_date=:up_date,op_statu=:op_statu,term_verid=:menu_ver,term_e1code=:term_e1code where psam_cdno = :psam_cdno and tel_number = :tel_number;
+	  if ( sqlca.sqlcode !=0)
+	  {
+    	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    	sprintf(errmsg,"终端资料表通过改写存在的记录的相关数据的方式增加记录失败!");
+  		return -1;
+  	}
+  	dcs_debug(0,0,"msg_term_info 原记录存在，通过改写此记录相关数据的方式增加记录成功");
+		
+	}
+	
+	exec sql commit;
+	return 1;
+}
+
+int addterminfo(char *psam_cdno,char *tel_number)
+{
+	
+	EXEC SQL BEGIN DECLARE SECTION;
+      char menu_ver[6+1];
+      char term_e1code[10+1];
+      char shop_name[256+1];
+  EXEC SQL END DECLARE SECTION;
+
+	char m_statu[1+1];
+	char m_type_id[6+1];
+	sprintf(m_statu,"0");
+	memset(m_type_id,0,sizeof(m_type_id));
+	
+  exec sql select menu_ver,term_e1code into :menu_ver,:term_e1code from msg_psam_info where psam_cdno = :psam_cdno;
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_psam_info table error ! sqlcode =%d ", sqlca.sqlcode);
+  	exec sql rollback;
+  	return -1;
+  }
+  Trim(menu_ver);
+  Trim(term_e1code);
+  
+  exec sql select user_name into :shop_name from msg_term_info where tel_number = :tel_number;
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+  	exec sql rollback;
+  	return -1;
+  }
+  Trim(shop_name);
+  
+  exec sql select term_code from term_info where term_simno=:psam_cdno and term_code=:tel_number;
+  if ( sqlca.sqlcode !=0)
+  {
+		exec sql insert into term_info(term_simno,term_code,term_e1code,term_statu,term_verid,shop_name)
+		 values(:psam_cdno,:tel_number,:term_e1code,:m_statu,:menu_ver,:shop_name);
+	
+		dcs_log(0,0,"term_simno:[%s]\nterm_code:[%s]\nterm_statu:[%s]\nterm_verid:[%s]\nshop_name:[%s]\n",psam_cdno,tel_number,m_statu,menu_ver,shop_name);
+			
+  	if ( sqlca.sqlcode == -1 )
+		{
+			dcs_log(0,0,"term_info 交易记录重复!\nterm_simno:[%s],tel_code:[%s],term_e1code:[%s],term_statu:[%s],term_verid:[%s],shop_name:[%s]",
+	              psam_cdno,tel_number,term_e1code,m_statu,menu_ver,shop_name);
+	    exec sql rollback;
+	  	return -1;
+		}
+		else if ( sqlca.sqlcode != 0 )
+		{
+			dcs_log(0,0,"term_info 写数据库失败!\nterm_simno:[%s],tel_code:[%s],term_e1code:[%s],term_statu:[%s],term_verid:[%s],shop_name:[%s]",
+	              psam_cdno,tel_number,term_e1code,m_statu,menu_ver,shop_name);
+	    exec sql rollback;
+	  	return -2;
+		}
+	
+		dcs_debug(0,0,"term_info 增加记录成功");
+	}
+	else
+	{
+		exec sql update term_info set term_e1code=:term_e1code,term_statu=:m_statu,term_verid=:menu_ver,shop_name=:shop_name where term_simno=:psam_cdno and term_code=:tel_number;
+	  if ( sqlca.sqlcode !=0)
+	  {
+    	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    	exec sql rollback;
+  		return -1;
+  	}
+  	dcs_debug(0,0,"term_info 原记录存在，通过改写此记录相关数据的方式增加记录成功");
+			
+	}
+	exec sql commit;
+	return 1;
+}
+
+int deleterminfo(char * psam_cdno,char * tel_number)
+{
+	dcs_log(0,0,"delete from term_info where term_code=%s",tel_number);
+	
+	exec sql delete from term_info where term_code=:tel_number;
+ 	if ( sqlca.sqlcode !=0)
+ 	{
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "delete from term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+   	exec sql commit;
+    return -1;
+ 	}
+ 	exec sql commit;	
+  dcs_debug(0,0,"term_info 删除记录成功");  
+  
+	return 1;
+}
+
+int moditerminfoandmsgterminfo(char *psam_cdno,char *tel_number,char *extra,char *errmsg)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+		char m_sql_str[1024+1];
+		char m_sql_str1[1024+1];
+		char m_statu[2+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	/*memset(m_sql_str,0,sizeof(m_sql_str);
+	memset(m_sql_str1,0,sizeof(m_sql_str1);*/
+	
+	if(strlen(extra)==0)	return -1;
+			
+	char m_bz[1+1];
+	char m_data[64+1];
+	
+	memset(m_bz,0,sizeof(m_bz));
+	memset(m_data,0,sizeof(m_data));
+	
+	memcpy(m_bz,extra,1);
+	memcpy(m_data,extra+1,strlen(extra)-1);
+		
+	if(memcmp(m_bz,"1",1)==0)
+	{
+		exec sql select tel_number from msg_term_info where tel_number = :m_data;
+		if ( sqlca.sqlcode !=0)
+		{
+			exec sql select term_code from term_info where term_code = :m_data;
+			if ( sqlca.sqlcode !=0)
+			{	
+  			exec sql select state into :m_statu from msg_user_info where tel_number = :m_data;
+  			if ( sqlca.sqlcode !=0)
+  			{
+  				dcs_debug(0,0,"<moditerminfoandmsgterminfo> msg_user_info <电话号码:%s> 不存在记录，无法变更。",m_data);
+  				sprintf(errmsg,"用户资料表 <电话号码:%s> 不存在记录，无法变更。",m_data);
+  				return -1;
+  			}
+  			else
+  			{
+  				if(memcmp(m_statu,"0",1)==0)
+  				{
+						dcs_debug(0,0,"<moditerminfoandmsgterminfo> msg_user_info <电话号码:%s> 记录处于占用状态，无法变更。",m_data);
+						sprintf(errmsg,"用户资料表 <电话号码:%s> 记录处于占用状态，无法变更。",m_data);
+						return -1;
+					}
+					else
+					{
+						sprintf(m_sql_str,"update msg_term_info set term_statu='%s',op_statu='%s',tel_number='%s' where psam_cdno='%s' and tel_number='%s'","02","0008",m_data,psam_cdno,tel_number);
+						sprintf(m_sql_str1,"update term_info set TERM_CODE='%s' where TERM_SIMNO='%s' and TERM_CODE='%s'",m_data,psam_cdno,tel_number);
+					}
+				}
+			}
+			else
+			{
+				dcs_debug(0,0,"<moditerminfoandmsgterminfo> term_info <电话号码:%s> 存在记录，无法变更。",m_data);
+				sprintf(errmsg,"终端管理系统平台中的终端资料表 <电话号码:%s> 存在记录，无法变更。",m_data);
+				return -1;
+			}
+		}
+		else
+		{
+			dcs_debug(0,0,"<moditerminfoandmsgterminfo> msg_term_info <电话号码:%s> 存在记录，无法变更。",m_data);
+			sprintf(errmsg,"终端资料表 <电话号码:%s> 存在记录，无法变更。",m_data);
+			return -1;
+		}
+	}
+	else	if(memcmp(m_bz,"2",1)==0)
+	{
+		exec sql select psam_cdno from msg_term_info where psam_cdno = :m_data;
+		if ( sqlca.sqlcode !=0)
+		{
+			exec sql select term_simno from term_info where term_simno = :m_data;
+			if ( sqlca.sqlcode !=0)
+			{
+  			exec sql select psam_statu into :m_statu from msg_psam_info where psam_cdno = :m_data;
+  			if ( sqlca.sqlcode !=0)
+  			{
+  				dcs_debug(0,0,"<moditerminfoandmsgterminfo> msg_psam_info <psam卡号:%s> 不存在记录，无法变更。",m_data);
+  				sprintf(errmsg,"PSAM卡资料表 <psam卡号:%s> 不存在记录，无法变更。",m_data);
+  				return -1;
+  			}
+  			else
+  			{
+  				if(memcmp(m_statu,"0",1)==0)
+  				{
+						dcs_debug(0,0,"<moditerminfoandmsgterminfo> msg_psam_info <psam卡号:%s> 记录处于占用状态，无法变更。",m_data);
+						sprintf(errmsg,"PSAM卡资料表 <psam卡号:%s> 记录处于占用状态，无法变更。",m_data);
+						return -1;
+					}
+					else
+					{
+						sprintf(m_sql_str,"update msg_term_info set term_statu='%s',op_statu='%s',psam_cdno='%s' where psam_cdno='%s' and tel_number='%s'","02","0008",m_data,psam_cdno,tel_number);
+						sprintf(m_sql_str1,"update term_info set TERM_SIMNO='%s' where TERM_SIMNO='%s' and TERM_CODE='%s'",m_data,psam_cdno,tel_number);
+					}
+				}
+			}
+			else
+			{
+				dcs_debug(0,0,"<moditerminfoandmsgterminfo> term_info <psam卡号:%s> 存在记录，无法变更。",m_data);
+				sprintf(errmsg,"终端管理系统平台中的终端资料表 <psam卡号:%s> 存在记录，无法变更。",m_data);
+				return -1;
+			}
+		}
+		else
+		{
+			dcs_debug(0,0,"<moditerminfoandmsgterminfo> msg_term_info <psam卡号:%s> 存在记录，无法变更。",m_data);
+			sprintf(errmsg,"终端资料表 <psam卡号:%s> 存在记录，无法变更。",m_data);
+			return -1;
+		}
+	}
+	else return -1;
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	exec sql execute immediate :m_sql_str;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql rollback;
+    return -1;
+  }
+  /*exec sql commit;	*/
+	dcs_debug(0,0,"<moditerminfoandmsgterminfo> msg_term_info 修改记录成功");  
+	
+	dcs_log(0,0,"%s",m_sql_str1);
+	
+	exec sql execute immediate :m_sql_str1;
+
+  if ( sqlca.sqlcode !=0)
+  {
+	  dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql rollback;
+    return -1;
+  }
+  exec sql commit;	
+	dcs_debug(0,0,"<moditerminfoandmsgterminfo> term_info 修改记录成功");  
+
+	return 1;
+}
+
+int changemsgterminfo(char *psam_cdno,char *tel_number,char *op_statu,char *term_statu,char *extra)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+		char m_sql_str[1024+1];
+		char m_sql_str1[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+/*	memset(m_sql_str,0,sizeof(m_sql_str);
+	memset(m_sql_str1,0,sizeof(m_sql_str1);*/
+	
+/*	if(memcmp(op_statu,"0011",4)==0)
+	{
+		if(strlen(extra)==0)	return -1;
+			
+		char m_bz[1];
+		char m_data[200+1];
+	
+		memset(m_bz,0,sizeof(m_bz));
+		memset(m_data,0,sizeof(m_data));
+	
+		memcpy(m_bz,extra,1);
+		memcpy(m_data,extra+1,strlen(extra)-1);
+		
+		if(memcmp(term_statu,"01",2)==0||memcmp(term_statu,"03",2)==0)
+		{
+			sprintf(m_sql_str,"update msg_term_info set term_statu='%s',op_statu='%s',extra='%s' where psam_cdno='%s' and tel_number='%s'",term_statu,op_statu,extra,psam_cdno,tel_number);
+		}
+		else if(memcmp(term_statu,"02",2)==0)
+		{
+			if(memcmp(m_bz,"1",1)==0)
+			{
+				sprintf(m_sql_str,"update msg_term_info set term_statu='%s',op_statu='%s',extra='%s',tel_number='%s' where psam_cdno='%s' and tel_number='%s'",term_statu,op_statu,extra,m_data,psam_cdno,tel_number);
+				sprintf(m_sql_str,"update term_info set TERM_CODE='%s' where TERM_SIMNO='%s' and TERM_CODE='%s'",m_data,psam_cdno,tel_number);
+			}
+			else	if(memcmp(m_bz,"2",1)==0)
+			{
+				sprintf(m_sql_str,"update msg_term_info set term_statu='%s',op_statu='%s',extra='%s',psam_cdno='%s' where psam_cdno='%s' and tel_number='%s'",term_statu,op_statu,extra,m_data,psam_cdno,tel_number);
+				sprintf(m_sql_str,"update term_info set TERM_SIMNO='%s' where TERM_SIMNO='%s' and TERM_CODE='%s'",m_data,psam_cdno,tel_number);
+			}
+		}
+	}
+	else
+	{*/
+		sprintf(m_sql_str,"update msg_term_info set term_statu='%s',op_statu='%s',extra='%s' where psam_cdno='%s' and tel_number='%s'",term_statu,op_statu,extra,psam_cdno,tel_number);
+	/*}*/
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	exec sql execute immediate :m_sql_str;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+    return -1;
+  }
+  exec sql commit;	
+	dcs_debug(0,0,"msg_term_info 写数据库成功");  
+	
+	return 1;
+}
+
+int findopinfo(char *whe,char *infobuff,int begin_page,int end_page,char *over_bz)
+{
+	char m_record[2048+1];
+	int m_len=0;
+	int m_page=1;
+	char m_sql_str[2048+1];
+
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_op_id[6+1];
+		char x_op_type[2+1];
+		char x_op_name[200+1];
+		char x_op_area[200+1];
+		char x_term_expand[200+1];
+		char x_term_join[200+1];
+		char x_term_keep[200+1];
+		char x_op_limit[200+1];
+		char x_op_memo[200+1];
+		
+	EXEC SQL END DECLARE SECTION;
+
+	
+	
+	if(strlen(whe)==0)
+		sprintf(m_sql_str,"SELECT op_id,op_type,op_name,op_area,term_expand,term_join,term_keep,op_limit,op_memo from msg_op_login");
+	else	sprintf(m_sql_str,"SELECT op_id,op_type,op_name,op_area,term_expand,term_join,term_keep,op_limit,op_memo from msg_op_login where %s",whe);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	EXEC SQL PREPARE z FROM :m_sql_str;
+		
+	EXEC SQL DECLARE z_cursor CURSOR FOR z;
+
+	EXEC SQL OPEN z_cursor;
+
+	for(;;)
+	{
+		
+		EXEC SQL FETCH z_cursor
+				INTO :x_op_id,:x_op_type,:x_op_name,:x_op_area,:x_term_expand,:x_term_join,:x_term_keep,:x_op_limit,:x_op_memo;
+				
+		if ( sqlca.sqlcode ==1403)	break;
+		else	if ( sqlca.sqlcode !=0)	return -1;
+		
+		if(m_page>=begin_page && m_page<end_page)
+		{
+			Trim(x_op_id);
+			Trim(x_op_name);
+			Trim(x_op_area);
+			Trim(x_term_expand);
+			Trim(x_term_join);
+			Trim(x_term_keep);
+			Trim(x_op_limit);
+			Trim(x_op_memo);
+
+			memset(m_record,0,sizeof(m_record));
+		
+			sprintf(m_record,"%s,%s,%s,%s,%s,%s,%s,%s,%s;",x_op_id,x_op_type,x_op_name,x_op_area,x_term_expand,x_term_join,x_term_keep,x_op_limit,x_op_memo);
+		
+			dcs_log(0,0,"%s,%s,%s,%s,%s,%s,%s,%s,%s;",x_op_id,x_op_type,x_op_name,x_op_area,x_term_expand,x_term_join,x_term_keep,x_op_limit,x_op_memo);
+		
+			memcpy(infobuff+m_len,m_record,strlen(m_record));
+		
+			m_len=m_len+strlen(m_record);
+		}
+		m_page=m_page+1;
+	}
+	
+	if(m_page>=end_page)	memcpy(over_bz,"0",1);
+	else	memcpy(over_bz,"1",1);
+
+	EXEC SQL CLOSE z_cursor;
+   
+  
+  return 1;	
+}
+
+int addopinfo(char *op_id,char *op_type,char *op_name,char *op_area,char *term_expand,char *term_join,char *term_keep,char *op_passwd,char *op_limit,char *op_memo)
+{
+	int id;
+	
+	char m_id[6+1];
+	
+	memset(m_id,0,sizeof(m_id));
+	
+	id=1;
+	for(;;)
+	{
+		sprintf(m_id,"%06d",id);
+		
+  	exec sql select op_id from msg_op_login where op_id = :m_id;
+		if ( sqlca.sqlcode !=0)	break;
+		id++;
+	}
+	
+	exec sql insert into msg_op_login(op_id,op_type,op_name,op_area,term_expand,term_join,term_keep,op_passwd,op_limit,op_memo)
+	values(:m_id,:op_type,:op_name,:op_area,:term_expand,:term_join,:term_keep,:op_passwd,:op_limit,:op_memo);
+			
+  if ( sqlca.sqlcode == -1 )
+	{
+		dcs_log(0,0,"msg_op_login 交易记录重复!\nop_id:[%s],op_type:[%s],op_name:[%s],op_area:[%s],term_expand:[%s],term_join:[%s],term_keep:[%s],op_passwd:[%s],op_limit:[%s],op_memo:[%s]",
+	              m_id,op_type,op_name,op_area,term_expand,term_join,term_keep,op_passwd,op_limit,op_memo);
+	  return -1;
+	}
+	else if ( sqlca.sqlcode != 0 )
+	{
+		dcs_log(0,0,"msg_op_login 写数据库失败!\nop_id:[%s],op_type:[%s],op_name:[%s],op_area:[%s],term_expand:[%s],term_join:[%s],term_keep:[%s],op_passwd:[%s],op_limit:[%s],op_memo:[%s]",
+	              m_id,op_type,op_name,op_area,term_expand,term_join,term_keep,op_passwd,op_limit,op_memo);
+	  	         
+		return -2;
+	}
+	
+	exec sql commit;
+	dcs_debug(0,0,"msg_op_login 写数据库成功");
+
+	
+	return 1;
+
+
+}
+
+int modiopinfo(char * op_id,char * up_data)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	if(strlen(up_data)==0)	return 1;
+	else	sprintf(m_sql_str,"update msg_op_login %s where op_id='%s'",up_data,op_id);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	exec sql execute immediate :m_sql_str;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_op_login table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+    return -1;
+  }
+  exec sql commit;	
+	dcs_debug(0,0,"msg_op_login 写数据库成功");  
+
+	return 1;
+}
+
+int deleopinfo(char * op_id)
+{
+	exec sql delete from msg_op_login where op_id=:op_id;
+ 	if ( sqlca.sqlcode !=0)
+ 	{
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "delete from msg_op_login table error ! sqlcode =%d ", sqlca.sqlcode);
+   	exec sql commit;
+    return -1;
+ 	}
+ 	exec sql commit;	
+  dcs_debug(0,0,"msg_op_login 写数据库成功");  
+	
+	return 1;
+}
+
+int getpsamstatu(char * psam_cdno)
+{
+   EXEC SQL BEGIN DECLARE SECTION;
+       char psam_statu[2];
+   EXEC SQL END DECLARE SECTION;
+   
+   exec sql select psam_statu into :psam_statu  from msg_psam_info where psam_cdno = :psam_cdno ;
+   
+   if ( sqlca.sqlcode !=0)
+   {
+     	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_psam_info table error ! sqlcode =%d ", sqlca.sqlcode);
+      return -1;
+   }
+   
+   if(memcmp(psam_statu,"1",1)==0)	return 1;
+   else	if(memcmp(psam_statu,"0",1)==0)	return 0;
+   else	return -1;
+}
+
+int setpsamstatu(char * psam_cdno,char * psam_statu)
+{
+  exec sql update  msg_psam_info set psam_statu = :psam_statu where psam_cdno = :psam_cdno;
+  if ( sqlca.sqlcode !=0)
+  {
+    dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_psam_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+  	return -1;
+  }
+	exec sql commit;
+  dcs_debug(0,0,"msg_psam_info 写数据库成功");     
+  
+  return 1;
+}
+
+int setuserstatu(char * tel_number,char * statu)
+{
+	dcs_log(0,0,"update msg_user_info set statu = %s where tel_number = %s",statu,tel_number);
+  exec sql update msg_user_info set state = :statu where tel_number = :tel_number;
+  if ( sqlca.sqlcode !=0)
+  {
+    dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_user_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+  	return -1;
+  }
+	exec sql commit;
+  dcs_debug(0,0,"msg_user_info 写数据库成功");     
+  
+  return 1;
+}
+
+int settermstatu(char * term_simno,char * term_code,char * term_statu)
+{
+  exec sql update  term_info set term_statu = :term_statu where term_simno = :term_simno and term_code = :term_code;
+  if ( sqlca.sqlcode !=0)
+  {
+    dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+  	return -1;
+  }
+	exec sql commit;
+  dcs_debug(0,0,"term_info 写数据库成功");     
+  
+  return 1;
+}
+
+int addmsglog(char *m_info,char *m_handle,char *m_date,char *m_time,char *m_seq,char *m_status,char *m_opid)
+{
+  exec sql insert into msg_log(msg_info,msg_handle,msg_date,msg_time,msg_seq,msg_status,msg_opid) values(:m_info,:m_handle,:m_date,:m_time,:m_seq,:m_status,:m_opid);
+  if ( sqlca.sqlcode == -1 )
+	{
+	  dcs_log(0,0,"msg_log 交易记录重复!\nm_info:[%s],m_handle:[%s],m_date:[%s],m_time:[%s],m_seq:[%s],m_status:[%s],m_opid:[%s]",
+	             m_info,m_handle,m_date,m_time,m_seq,m_status,m_opid);
+	  return -1;
+	}
+	else if ( sqlca.sqlcode != 0 )
+	{
+	  dcs_log(0,0,"msg_log 写数据库失败!\nm_info:[%s],m_handle:[%s],m_date:[%s],m_time:[%s],m_seq:[%s],m_status:[%s],m_opid:[%s]",
+	             m_info,m_handle,m_date,m_time,m_seq,m_status,m_opid);
+	  	         
+	  return -2;
+	}
+	exec sql commit;
+	dcs_debug(0,0,"msg_log 写数据库成功");
+  
+  return 1;
+}
+
+int upmsglog(char *m_date,char *m_time,char *m_seq,char *msg,char *m_ret)
+{
+	dcs_log(0,0,"update  msg_log set msg = %s,msg_ret = %s where msg_date = %s and msg_time = %s and msg_seq = %s",msg,m_ret,m_date,m_time,m_seq);
+  exec sql update  msg_log set msg = :msg,msg_ret = :m_ret where msg_date = :m_date and msg_time = :m_time and msg_seq = :m_seq;
+  if ( sqlca.sqlcode !=0)
+  {
+    dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_log table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+  	return -1;
+  }
+	exec sql commit;
+  dcs_debug(0,0,"msg_log 写数据库成功");     
+  
+  return 1;
+}
+
+int getinfo(char *psam_cdno,char *tel_number,char * user_name,char * cover,char * tel_type,char * address,char * tel_contact,char * certificate_type,char * certificate_number,char * area,char * expand,char * memo)
+{
+	char m_record[200+1];
+	int m_len=0;
+		
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_user_name[200+1];
+		char x_cover[4+1];
+		char x_tel_type[200+1];
+		char x_address[200+1];
+		char x_tel_contact[200+1];
+		char x_certificate_type[200+1];
+		char x_certificate_number[200+1];
+		char x_area[6+1];
+		char x_expand[6+1];
+		char x_memo[200+1];
+	
+	EXEC SQL END DECLARE SECTION;
+	
+	
+	exec sql select user_name,cover,tel_type,address,tel_contact,certificate_type,certificate_number,area,expand,memo into :x_user_name,:x_cover,:x_tel_type,:x_address,:x_tel_contact,:x_certificate_type,:x_certificate_number,:x_area,:x_expand,:x_memo from msg_user_info where tel_number=:tel_number;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select msg_user_info table error ! sqlcode =%d ", sqlca.sqlcode);
+  	return -1;
+  }
+	
+	Trim(x_user_name);
+	Trim(x_cover);
+	Trim(x_tel_type);
+	Trim(x_address);
+	Trim(x_tel_contact);
+	Trim(x_certificate_type);
+	Trim(x_certificate_number);
+	Trim(x_area);
+	Trim(x_expand);
+	Trim(x_memo);
+	
+	strcpy(user_name,x_user_name);
+	strcpy(cover,x_cover);
+	strcpy(tel_type,x_tel_type);
+	strcpy(address,x_address);
+	strcpy(tel_contact,x_tel_contact);
+	strcpy(certificate_type,x_certificate_type);
+	strcpy(certificate_number,x_certificate_number);
+	strcpy(area,x_area);
+	strcpy(expand,x_expand);
+	strcpy(memo,x_memo);
+   
+  /*dcs_log(0,0,"[%s]",infobuff);*/
+  
+  return 1;
+}
+
+int update_menu_ver_msg_term_info(char *psam_cdno,char *menu_ver)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+
+	sprintf(m_sql_str,"update msg_term_info set term_verid='%s' where psam_cdno='%s'",menu_ver,psam_cdno);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	exec sql execute immediate :m_sql_str;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+    return -1;
+  }
+  exec sql commit;	
+	dcs_debug(0,0,"msg_term_info 写数据库成功");
+	
+	return 1;
+}
+
+int update_term_e1code_msg_term_info(char *psam_cdno,char *term_e1code)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+
+	sprintf(m_sql_str,"update msg_term_info set term_e1code='%s' where psam_cdno='%s'",term_e1code,psam_cdno);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	exec sql execute immediate :m_sql_str;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update msg_term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+    return -1;
+  }
+  exec sql commit;	
+	dcs_debug(0,0,"msg_term_info 写数据库成功");
+	
+	return 1;	
+}
+
+int update_menu_ver_term_info(char *psam_cdno,char *menu_ver)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+
+	sprintf(m_sql_str,"update term_info set term_verid='%s' where term_simno='%s'",menu_ver,psam_cdno);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	exec sql execute immediate :m_sql_str;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+    return -1;
+  }
+  exec sql commit;	
+	dcs_debug(0,0,"term_info 写数据库成功");
+	
+	return 1;		
+}
+
+int update_term_e1code_term_info(char *psam_cdno,char *term_e1code)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+
+	sprintf(m_sql_str,"update term_info set term_e1code='%s' where term_simno='%s'",term_e1code,psam_cdno);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	exec sql execute immediate :m_sql_str;
+
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update term_info table error ! sqlcode =%d ", sqlca.sqlcode);
+    exec sql commit;
+    return -1;
+  }
+  exec sql commit;	
+	dcs_debug(0,0,"term_info 写数据库成功");
+	
+	return 1;	
+}
+
+int getorgan(char * m_organcode,char * m_mkey,char * m_factor)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+      char x_mkey[20+1],x_factor[20+1];
+  EXEC SQL END DECLARE SECTION;
+   
+  exec sql select mkey,factor into :x_mkey,:x_factor from organ where code = :m_organcode;
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select organ table error ! sqlcode =%d ", sqlca.sqlcode);
+  	return -1;
+  }
+  Trim(x_mkey);
+  Trim(x_factor);
+  
+	strcpy(m_mkey,x_mkey);
+	strcpy(m_factor,x_factor);
+	
+  return 1;	
+}
+
+int getshopkey(char * m_organcode,char * m_shopid,char * m_termid,char * m_keydata1,char * m_keydata2)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+      char x_keydata1[32+1],x_keydata2[32+1];
+  EXEC SQL END DECLARE SECTION;
+  
+  /*huang jia modi 20101013 获取密钥条件中去掉机构代码*/ 
+  /*exec sql select keydata1,keydata2 into :x_keydata1,:x_keydata2 from shopkey where organcode = :m_organcode and shopid = :m_shopid and termid = :m_termid;*/
+  exec sql select keydata1,keydata2 into :x_keydata1,:x_keydata2 from shopkey where shopid = :m_shopid and termid = :m_termid and rownum=1;
+  	
+  if ( sqlca.sqlcode !=0)
+  {
+  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "select shopkey table error ! sqlcode =%d ", sqlca.sqlcode);
+  	return -1;
+  }
+  Trim(x_keydata1);
+  Trim(x_keydata2);
+  
+	strcpy(m_keydata1,x_keydata1);
+	strcpy(m_keydata2,x_keydata2);
+	
+  return 1;	
+}
+
+
+int getshopinfo( char * whe,char * m_data,int begin_page,int end_page,char * over_bz )
+{
+	char m_record[200+1];
+	int m_len=0;
+	int m_page=1;
+	
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_organcode[20+1];
+		char x_shopid[20+1];
+		char x_termid[20+1];
+		char x_shopname[120+1];
+		
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	if(strlen(whe)==0)
+		sprintf(m_sql_str,"SELECT organcode,shopid,termid,shopname from shopkey");
+	else	sprintf(m_sql_str,"SELECT organcode,shopid,termid,shopname from shopkey where %s",whe);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	EXEC SQL PREPARE sss FROM :m_sql_str;
+	
+	EXEC SQL DECLARE sss_cursor CURSOR FOR sss;
+		
+	EXEC SQL OPEN sss_cursor;
+	
+	for(;;)
+	{
+		EXEC SQL FETCH sss_cursor
+				INTO :x_organcode,:x_shopid,:x_termid,:x_shopname;
+				
+		if ( sqlca.sqlcode ==1403)	break;
+		else	if ( sqlca.sqlcode !=0)	return -1;
+
+		if(m_page>=begin_page && m_page<end_page)
+		{
+			Trim(x_organcode);
+  		Trim(x_shopid);
+  		Trim(x_termid);
+  		Trim(x_shopname);
+
+			memset(m_record,0,sizeof(m_record));
+		
+			sprintf(m_record,"%s,%s,%s,%s;",x_organcode,x_shopid,x_termid,x_shopname);
+			dcs_log(0,0,"%s,%s,%s,%s;",x_organcode,x_shopid,x_termid,x_shopname);
+		
+			memcpy(m_data+m_len,m_record,strlen(m_record));
+		
+			m_len=m_len+strlen(m_record);
+		}
+		
+		m_page=m_page+1;
+	}
+	
+	if(m_page>=end_page)	memcpy(over_bz,"0",1);
+	else	memcpy(over_bz,"1",1);
+	
+	EXEC SQL CLOSE sss_cursor;
+   
+  dcs_log(0,0,"[%s]",m_data);
+  
+  return 1;	
+}
+
+int getorganinfo( char * whe,char * m_data,int begin_page,int end_page,char * over_bz )
+{
+	char m_record[200+1];
+	int m_len=0;
+	int m_page=1;
+	
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_code[20+1];
+		char x_name[100+1];
+		char x_mkey[64+1];
+		char x_factor[64+1];
+		
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	if(strlen(whe)==0)
+		sprintf(m_sql_str,"SELECT code,name,mkey,factor from organ");
+	else	sprintf(m_sql_str,"SELECT code,name,mkey,factor from organ where %s",whe);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	EXEC SQL PREPARE ttt FROM :m_sql_str;
+	
+	EXEC SQL DECLARE ttt_cursor CURSOR FOR ttt;
+		
+	EXEC SQL OPEN ttt_cursor;
+	
+	for(;;)
+	{
+		EXEC SQL FETCH ttt_cursor
+				INTO :x_code,:x_name,:x_mkey,:x_factor;
+				
+		if ( sqlca.sqlcode ==1403)	break;
+		else	if ( sqlca.sqlcode !=0)	return -1;
+
+		if(m_page>=begin_page && m_page<end_page)
+		{
+			Trim(x_code);
+  		Trim(x_name);
+  		Trim(x_mkey);
+  		Trim(x_factor);
+
+			memset(m_record,0,sizeof(m_record));
+		
+			sprintf(m_record,"%s,%s,%s,%s;",x_code,x_name,x_mkey,x_factor);
+			dcs_log(0,0,"%s,%s,%s,%s;",x_code,x_name,x_mkey,x_factor);
+		
+			memcpy(m_data+m_len,m_record,strlen(m_record));
+		
+			m_len=m_len+strlen(m_record);
+		}
+		
+		m_page=m_page+1;
+	}
+	
+	if(m_page>=end_page)	memcpy(over_bz,"0",1);
+	else	memcpy(over_bz,"1",1);
+	
+	EXEC SQL CLOSE ttt_cursor;
+   
+  dcs_log(0,0,"[%s]",m_data);
+  
+  return 1;	
+}
+
+int getopinfo( char * whe,char * m_data,int begin_page,int end_page,char * over_bz )
+{
+	char m_record[200+1];
+	int m_len=0;
+	int m_page=1;
+	
+	EXEC SQL BEGIN DECLARE SECTION;
+		char x_op_id[20+1];
+		char x_op_name[100+1];
+		char x_op_limit[64+1];
+		char x_op_passwd[64+1];
+		char x_op_mkey[16+1];
+		char x_op_wkey[16+1];
+		char x_op_memo[100+1];
+		char x_op_type[2+1];
+		char x_organcode[20+1];
+		
+		char m_sql_str[1024+1];
+	EXEC SQL END DECLARE SECTION;
+	
+	if(strlen(whe)==0)
+		sprintf(m_sql_str,"SELECT op_id,op_name,op_limit,op_passwd,op_mkey,op_wkey,op_memo,op_type,organcode from opinfo");
+	else	sprintf(m_sql_str,"SELECT op_id,op_name,op_limit,op_passwd,op_mkey,op_wkey,op_memo,op_type,organcode from opinfo where %s",whe);
+	
+	dcs_log(0,0,"%s",m_sql_str);
+	
+	EXEC SQL PREPARE uuu FROM :m_sql_str;
+	
+	EXEC SQL DECLARE uuu_cursor CURSOR FOR uuu;
+		
+	EXEC SQL OPEN uuu_cursor;
+	
+	for(;;)
+	{
+		EXEC SQL FETCH uuu_cursor
+				INTO :x_op_id,:x_op_name,:x_op_limit,:x_op_passwd,:x_op_mkey,:x_op_wkey,:x_op_memo,:x_op_type,:x_organcode;
+				
+		if ( sqlca.sqlcode ==1403)	break;
+		else	if ( sqlca.sqlcode !=0)	return -1;
+
+		if(m_page>=begin_page && m_page<end_page)
+		{
+			Trim(x_op_id);
+			Trim(x_op_name);
+			Trim(x_op_limit);
+			Trim(x_op_passwd);
+			Trim(x_op_mkey);
+			Trim(x_op_wkey);
+			Trim(x_op_memo);
+			Trim(x_op_type);
+			Trim(x_organcode);
+
+			memset(m_record,0,sizeof(m_record));
+		
+			sprintf(m_record,"%s,%s,%s,%s;",x_op_id,x_op_name,x_op_limit,x_op_passwd,x_op_mkey,x_op_wkey,x_op_memo,x_op_type,x_organcode);
+			dcs_log(0,0,"%s,%s,%s,%s;",x_op_id,x_op_name,x_op_limit,x_op_passwd,x_op_mkey,x_op_wkey,x_op_memo,x_op_type,x_organcode);
+		
+			memcpy(m_data+m_len,m_record,strlen(m_record));
+		
+			m_len=m_len+strlen(m_record);
+		}
+		
+		m_page=m_page+1;
+	}
+	
+	if(m_page>=end_page)	memcpy(over_bz,"0",1);
+	else	memcpy(over_bz,"1",1);
+	
+	EXEC SQL CLOSE uuu_cursor;
+   
+  dcs_log(0,0,"[%s]",m_data);
+  
+  return 1;	
+}
+
+int insmsglog(char *m_info,char *m_handle,char *m_date,char *m_time,char *m_seq,char *m_status,char *m_opid,char *m_ret,char *m_shopid,char *m_termid,char *m_organcode)
+{
+	char m_msg[500+1];
+	memset(m_msg,0,sizeof(m_msg));
+	sprintf(m_msg,"%s,%s,%s",m_shopid,m_termid,m_organcode);
+	
+  exec sql insert into oplog(msg_info,msg_handle,msg_date,msg_time,msg_seq,msg_status,msg_opid,msg_ret,msg) values(:m_info,:m_handle,:m_date,:m_time,:m_seq,:m_status,:m_opid,:m_ret,:m_msg);
+  if ( sqlca.sqlcode == -1 )
+	{
+	  dcs_log(0,0,"oplog 交易记录重复!\nm_info:[%s],m_handle:[%s],m_date:[%s],m_time:[%s],m_seq:[%s],m_status:[%s],m_opid:[%s],m_ret:[%s],m_msg:[%s]",
+	             m_info,m_handle,m_date,m_time,m_seq,m_status,m_opid,m_ret,m_msg);
+	  return -1;
+	}
+	else if ( sqlca.sqlcode != 0 )
+	{
+	  dcs_log(0,0,"oplog 写数据库失败!\nm_info:[%s],m_handle:[%s],m_date:[%s],m_time:[%s],m_seq:[%s],m_status:[%s],m_opid:[%s],m_ret:[%s],m_msg:[%s]",
+	             m_info,m_handle,m_date,m_time,m_seq,m_status,m_opid,m_ret,m_msg);
+	  	         
+	  return -2;
+	}
+	exec sql commit;
+	dcs_debug(0,0,"oplog 写数据库成功");
+  
+  return 1;
+}
+
+int opinfomodipsw(char *m_opid,char *m_organcode,char *m_oldpsw,char *m_newpsw)
+{
+   exec sql update  opinfo set op_passwd = :m_newpsw where op_id=:m_opid and organcode=:m_organcode and op_passwd=:m_oldpsw ;
+   if ( sqlca.sqlcode !=0)
+   {
+     	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "update opinfo table error ! sqlcode =%d ", sqlca.sqlcode);
+     	exec sql commit;
+      return -1;
+   }
+   exec sql commit;
+   return 1;
+}
+
+void shopkeyadd()
+{
+}
+
+void shopkeymodi()
+{
+}
+
+void shopkey()
+{
+}
+
+void organadd()
+{
+}
+
+void organmodi()
+{
+}
+
+void organdele()
+{
+}

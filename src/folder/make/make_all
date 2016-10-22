@@ -1,0 +1,23 @@
+CUR_PATH=`pwd`
+FLDSRC=$ICS_SRCPATH/folder/src
+
+#all : ipc util mbuf log folder restore
+
+#ipc:
+	cd ${FLDSRC}/ipc
+	make all
+
+#util:
+	cd ${FLDSRC}/util
+	make all
+
+#mbuf:
+	cd ${FLDSRC}/mbuf
+	make all
+
+#folder:
+	cd ${FLDSRC}/folder
+	make all
+
+#restore:
+	cd ${CUR_PATH}

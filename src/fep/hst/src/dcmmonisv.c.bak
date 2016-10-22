@@ -1,0 +1,613 @@
+ #define _MainProg
+
+// 程序名称：dcmmonisv.c
+// 功能描述：
+//          终端管理系统TCP/IP通讯程序
+// 函数清单：
+//           main()
+
+	
+#include  "dccglobl.h"
+#include  "dccpgdef.h"
+#include  "dccdcs.h"
+#include  "dccsock.h"
+//#include  "errlog.h"
+//#include  "tmctms.h"
+//#include  "tmsdef.h"
+#include  "tmcibtms.h"
+#include  "dccmoni.h"
+#include <pthread.h>
+
+#define DCS_MONISRV_LOG  "monitor"
+#define DCS_MONILNK_NAME "monilnk.conf"
+#define MAX_BUF    10
+struct MSG_BUF
+{
+	char buf[200];
+	int len;
+//	char flag[10];
+//	int cnt[10];
+};
+static g_s=0;
+struct PARA_MSG
+{
+	int iSock;
+	int NO;	
+};	
+struct monilinkinfo   g_linkinfo[10];
+struct MSG_BUF  g_MsgBuf[MAX_BUF];	
+pthread_cond_t g_cond = PTHREAD_COND_INITIALIZER;
+static   char            *g_pcIseHome = NULL;
+static   pid_t            g_pidChild  = -1;
+static   int              g_iSock     = -1;
+static   int              g_iMoniMntFoldId = -1;
+static   char             g_caIdent[64];
+
+// Functions declaration
+void MoniTcpipExit(int signo);
+int MoniTcpipOpenLog();
+void MoniMakeConnection(struct monilinkinfo *arg);
+void SendMessage( struct PARA_MSG *arg);
+int MoniReadFromIse();
+static int LoadCommLnk();
+static  pthread_t g_thread[10];
+static  int g_CommCnt;
+
+int IsDeBug()
+{
+	return 1;
+}
+
+/*
+  函数名称：main
+  参数说明：
+           argv[0] 可执行程序名称
+           argv[1] 和本通信程序相连的文件夹名
+  返 回 值：
+           无
+  功能描述：
+           1.接收来自终端管理系统客户端的报文,并转交给相应的应用进程
+           2.接收本地应用的报文,并将其发往网络
+*/
+
+int main(int argc, char *argv[])
+{
+	int i;
+	struct monilinkinfo *arg;
+  	catch_all_signals(MoniTcpipExit);
+
+	memset(&g_thread[0],0,sizeof(pthread_t)*10);
+	memset(&g_linkinfo[0],0,sizeof(struct monilinkinfo)*10);
+
+	
+  	//读取ISE的主目录
+/*  	if (NULL == (g_pcIseHome = (char *)getenv("ISEHOME")))
+  	{
+    		dcs_log(0,0, "<Moni--getenv--%s> cannot get environment variable 'ISEHOME' !",g_caIdent);
+    		return (-1);
+  	}
+*/
+
+  	//prepare the log stuff
+  	if (0 > MoniTcpipOpenLog())
+    		goto lblExit;
+
+  	if ((g_CommCnt = LoadCommCounter()) < 0)
+  	{
+    		dcs_log(0,0, "<Moni LoadCommCounter> Failure to load monilnk.ini !" );
+    		goto lblExit;
+  	}   
+  	if ( LoadCommLnk()<0)
+  	{
+  		dcs_log(0,0, "<Moni LoadCommLnk> Failure to load monilnk.ini !" );
+    		goto lblExit;
+  	}
+  	for ( i=0 ;i<g_CommCnt;i++)
+  	{
+  		g_linkinfo[i].no=i;
+  		arg=&g_linkinfo[i];
+  		if ( pthread_create(&g_thread[g_CommCnt], NULL,( void * (*)(void *))MoniMakeConnection,arg) !=0)
+  		{
+  			dcs_log(0,0, "Can not create thread ");
+  			goto lblExit;
+  		};
+  		
+  	}
+/*
+  	//register
+  	if ( PidRegister( "MON", NULL, getpid() ) < 0 )
+    		goto lblExit;
+ */ 	
+  	dcs_debug(0,0, "begin MoniReadFromISE " );
+	MoniReadFromIse();
+
+lblExit:
+//	PidUnregister();
+  	MoniTcpipExit(0);
+}//main()
+
+/*
+  函数名称：MoniTcpipExit
+  参数说明：
+           signo：捕获的信号量
+  返 回 值：
+           无
+  功能描述：
+           当捕获的信号为SIGTERM时，该函数释放资源后终止当前进程；否则不做任何处理
+*/
+
+void MoniTcpipExit(int signo)
+{
+	int i;
+  	dcs_debug(0,0,"<MoniTcpipExit--%s> catch a signal %d !",g_caIdent, signo);
+
+  	if (g_pidChild == 0)
+  	{
+    		//child process
+    		if (signo == SIGTERM || signo == 0 || signo == SIGSEGV)
+      			
+
+    		return;
+  	}
+
+  	//parent process
+  	switch (signo)
+  	{
+    	case SIGUSR2: //monimnt want me to stop
+     		break;
+
+    	case 0:
+    	case SIGTERM:
+      		break;
+
+    	case SIGCHLD:
+		return;
+
+    	default:
+      		
+      		return;
+  	}
+
+  	for ( i=0 ;i <g_CommCnt; i++)
+  	   pthread_join(g_thread[i], NULL);
+
+  	exit(signo);
+}
+
+/*
+  函数名称：MoniTcpipOpenLog
+  参数说明：
+           无
+  返 回 值：
+           0：成功
+           -1：失败
+  功能描述：
+           1.获得系统主目录,将之放在全局变量g_pcIseHome
+           2.读取系统配置文件system.conf
+           3.设置日志文件和日志方式
+*/
+
+int MoniTcpipOpenLog()
+{
+  	char   caLogName[256];
+    char logfile[400];
+  
+    memset(caLogName,0,sizeof(caLogName));
+        strcpy(caLogName,"log/AlarmMoni.log");
+    if(u_fabricatefile(caLogName,logfile,sizeof(logfile)) < 0)
+    {
+            return -1;
+    }
+     dcs_log_open(logfile, "Alarm");
+
+ 	return 0;
+}
+
+
+/*
+  函数名称：MoniMakeConnection
+  参数说明：
+           无
+  返 回 值：
+           >0：成功，返回连接上的socket描述符
+           -1：失败
+  功能描述：
+           根据共享内存中的配置信息判断：
+           若通讯进程为服务器，则侦听本地端口号，一旦对方连接上，则返回该链接的socket描述符；
+           若通讯进程为客户端，则主动连接对方服务器，连接成功后，返回该链接的socket描述符。
+*/
+
+void MoniMakeConnection( struct monilinkinfo * arg)
+{
+  	pthread_t sthread;
+  	char buffer[100];
+  	struct PARA_MSG  sarg;
+        dcs_debug(0,0,"<Role = %d!",arg->iRole);
+  	if ( arg->iRole==DCS_ROLE_PASSIVE)
+  	{
+    		//we are the server end, create a listening socket and
+    		//wait to accept the clients' connection request
+    		int   iListenSock, iConnSock, iCliAddr;
+    		int   iCliPort;
+
+    	
+
+    		for (;;)
+    		{
+    			iListenSock = tcp_open_server(NULL,arg->sLocalPort);
+	    		if (iListenSock < 0)
+	    		{
+	      			dcs_log(0,0,"<MoniMakeConnection--tcp_open_server--%s> tcp_open_server() failed: %s!",g_caIdent,strerror(errno));
+	      			exit( -1);
+	    		}
+	
+	    		arg->iStatus = DCS_STAT_LISTENING;
+      			//waiting for clients
+      			iConnSock = tcp_accept_client(iListenSock,&iCliAddr, &iCliPort);
+      			if (iConnSock < 0)
+      			{
+        			dcs_log(0,0,"<MoniMakeConnection--tcp_accept_client--%s> tcp_accept_client() failed: %s!",\
+                           		g_caIdent,strerror(errno));
+        			tcp_close_socket(iListenSock);
+        			exit (-1);
+      			}
+
+      			//validate the client
+      			if (1)
+      			{
+        			int   iAddr, sPort;
+
+        			iAddr = tcp_pton(arg->caRemoteIp);
+        			sPort = arg->sRemotePort;
+
+        			if ( ((sPort >0) && (sPort != iCliPort)) || ((iAddr != INADDR_NONE) && (iCliAddr != iAddr)))
+        			{
+          				struct in_addr in;
+          				in.s_addr = iCliAddr;
+
+          			dcs_log(0,0,"<MoniMakeConnection--%s> accept a conn from %s:%d,but refused!",\
+                    				g_caIdent,inet_ntoa(in),iCliPort);
+          				tcp_close_socket(iConnSock);
+          				continue;  //accept() again
+        			}
+      			}
+
+      	
+      			tcp_close_socket(iListenSock);
+      			sarg.iSock=iConnSock;
+      			sarg.NO=arg->no;
+      			if ( pthread_create(&sthread, NULL,( void * (*)(void *))SendMessage,&sarg) !=0)
+	  		{
+	  			dcs_log(0,0, "Can not create thread ");
+	  			tcp_close_socket(iConnSock);
+	  			exit(0);
+	  		};
+	  		while(1)
+	  		{
+	  			if(tcp_check_readable(iConnSock,-1) < 0)
+				{
+					tcp_close_socket(iConnSock);
+					pthread_join(sthread, NULL);
+					break;
+				}
+				tcp_read_nbytes(iConnSock, buffer, 1);
+	  		}
+ //     			SendMessage(iConnSock);
+      			
+    		}//for(;;)
+  	} 
+  	else
+  	{
+    		//we are the client end, create a socket and
+    		//try to connect the server
+    		int   iConnSock;
+
+    		dcs_log(0,0,"<MoniMakeConnection--%s> try connect to %s:%d with local port=%d...",\
+                                g_caIdent,\
+                                arg->caRemoteIp,\
+                                arg->sRemotePort,\
+                                arg->sLocalPort);
+    		arg->iStatus = DCS_STAT_CALLING;
+
+		for(;;)
+		{
+    			iConnSock = tcp_connet_server(arg->caRemoteIp,\
+               	                   arg->sRemotePort,\
+               	                   arg->sLocalPort);
+
+                        if (iConnSock < 0)
+                        {
+                                sleep(MONITOR_CONNECT_WAIT_TIME);
+                                continue;
+                        }
+                       dcs_log(0,0,"<MoniMakeConnection--%s>  connect to %s:%d with local port=%d  is ESTABLISHED",\
+                                g_caIdent,\
+                                arg->caRemoteIp,\
+                                arg->sRemotePort,\
+                                arg->sLocalPort);
+    			arg->iStatus = DCS_STAT_CONNECTED;
+			sarg.iSock=iConnSock;
+      			sarg.NO=arg->no;
+			if ( pthread_create(&sthread, NULL,( void * (*)(void *))SendMessage,&sarg) !=0)
+	  		{
+	  			dcs_log(0,0, "Can not create thread " );
+	  			tcp_close_socket(iConnSock);
+	  			exit(0);
+	  		};
+	  		while(1)
+	  		{
+			  			if(tcp_check_readable(iConnSock,-1) < 0)
+						{
+							dcs_log(0,0, "Comm Error timeout" );
+							tcp_close_socket(iConnSock);
+							pthread_join(sthread, NULL);
+							break;
+						}
+						if ( tcp_read_nbytes(iConnSock, buffer, 1)<=0)
+						{
+							dcs_log(0,0, "Comm Error ");
+							tcp_close_socket(iConnSock);
+					
+							pthread_join(sthread, NULL);
+							break;
+						}
+	  		}
+
+		}
+ //   		SendMessage(iConnSock);
+    		
+  	}
+}
+
+
+/*
+  函数名称：MoniReadFromIse
+  参数说明：
+           无
+  返 回 值：
+           always return -1
+  功能描述：
+           从文件夹读取应用进程产生的交易报文,然后将其发向网络
+*/
+
+
+
+int MoniReadFromIse()
+{
+  	char  caBuffer[2048];
+  	int   nBytesRead, nBytesWritten;
+  	int   iOrgFid,s=0,qid;
+
+/*
+	if ( pthread_cond_init(g_cond, NULL)!=0)
+	{
+		sprintf(g_caMsg,"<MoniReadFromIse> create enent fail");
+		ErrLog(1000, g_caMsg, RPT_TO_LOG, 0, 0 );
+		return -1;
+	}
+*/
+	if ((qid=queue_connect("monitor"))<0)
+		if ( (qid=queue_create("monitor"))<0)
+		{
+			dcs_log(0,0, "create queue fail" );
+			return -1;
+		}
+	memset(&g_MsgBuf[0],0,sizeof(struct MSG_BUF)*MAX_BUF);
+  	for (;;)
+  	{
+    		dcs_debug(0,0, "<MoniReadFromIse--begin read--data> " );
+  		memset(caBuffer,0,sizeof(caBuffer));
+  		if ( (nBytesRead=queue_recv( qid, caBuffer, sizeof(caBuffer), 0))<0)  		
+    		{
+      			//read error
+      			
+      			dcs_log(0,0, "<MoniReadFromIse--read-->  failed" );
+      			break;
+    		}
+
+    		dcs_debug(caBuffer,strlen(caBuffer), "<MoniReadFromIse--read--data> " );
+		memcpy( g_MsgBuf[s].buf,caBuffer,nBytesRead);
+		g_MsgBuf[s].len=nBytesRead;
+	//	memset(&g_MsgBuf[s].flag[0],'1',10);
+		g_s=s;
+		s++;
+		if( s>=MAX_BUF)
+		    s=0;
+    pthread_cond_broadcast(&g_cond);   	       
+
+  	}//for(;;)
+
+  
+  	return (-1);
+}
+int LoadCommLnk()
+{
+  	char   caFileName[256], caBuffer[1024];
+  	int    iFd=-1, iRc,iSlotIndex = 0;  
+  	struct monilinkinfo *pLinkEntry=NULL;
+  	char   *pLinkFldName, *pApplFldName,*pRole, *pAddr1, *pAddr2;
+  	char   *pIp1, *pIp2, *pPort1, *pPort2 , *pTime, *pCommType,*pCommNO;     
+
+  	
+  	//设定commlnk定义文件的绝对路径，并打开
+  	memset(caFileName, 0, sizeof(caFileName) );
+  	sprintf(caFileName, "%s/%s",getenv("ISEHOME"),DCS_MONILNK_NAME);
+  	if ((iFd = conf_open(caFileName)) < 0)
+  	{
+    		dcs_log( 0,0, "<HstSrv> open isdcmlnk.conf fail ! ");
+//    		ISE_TRACE_END(-1);
+		return -1;
+  	}
+
+  	//读取所有的配置项'comm'
+  	for( iRc = conf_get_first_string(iFd, "comm",caBuffer);\
+       		iRc == 0 && iSlotIndex <10;\
+       		iRc = conf_get_next_string(iFd, "comm",caBuffer))
+  	{
+  		dcs_debug(0,0, "%s ",caBuffer);   
+  		pCommType    = strtok(caBuffer," \t\r");  //通道类型
+  		pCommNO      = strtok(NULL," \t\r");   //通道顺序号
+    		pLinkFldName = strtok(NULL," \t\r");  //文件夹名
+    		pApplFldName = strtok(NULL   ," \t\r");  //该link对应的应用进程的文件夹名
+    		pRole        = strtok(NULL   ," \t\r");  //角色
+    		pAddr1       = strtok(NULL   ," \t\r");  //地址串1
+    		pAddr2       = strtok(NULL   ," \t\r\n");//地址串2
+    		pTime        = strtok(NULL   ," \t\r\n");//通信超时检测时间
+    		//pMacFlag     = strtok(NULL," \t\r"); //MAC检测标志 
+   
+    		if (pCommType==NULL || pLinkFldName==NULL || pApplFldName==NULL || pRole==NULL || pAddr1==NULL || 
+    		     pAddr2==NULL || pTime==NULL )
+    		{
+      			//invalid address:skip this line
+      			continue;
+    		}   
+    
+    		pIp1   = strtok(pAddr1, ":");
+    		pPort1 = strtok(NULL, ":\r\t\n");
+    		pIp2   = strtok(pAddr2, ":");
+    		pPort2 = strtok(NULL, ":\r\t\n");
+    		if (pIp1==NULL || pPort1==NULL || pIp2==NULL || pPort2==NULL)
+    		{
+      			//invalid address:skip this line
+      			continue;
+    		}   
+    
+    		//建立和该link相连的文件夹
+    		pLinkEntry = &(g_linkinfo[iSlotIndex++]);
+       		
+     		//决定在链接建立过程中本地充当的角色
+    		if (memcmp(pRole,"passive",7)==0 )
+      			pLinkEntry->iRole = DCS_ROLE_PASSIVE;
+    		else if (memcmp(pRole,"active",6)==0 )
+      			pLinkEntry->iRole = DCS_ROLE_ACTIVE;
+                else 
+                {
+                       	if( (*(pRole+2))>'0' && (*(pRole+2))<='9')
+                       		pLinkEntry->iRole = DCS_ROLE_SIMPLEXSVR + (*(pRole+2)-0x30);
+                       	else            
+                       		goto lblFailure;         
+                }
+    		//do with the address
+    		strcpy(pLinkEntry->caLocalIp,pIp1);
+    		pLinkEntry->sLocalPort = atoi(pPort1); //listening port
+    		strcpy(pLinkEntry->caRemoteIp,pIp2);
+    		pLinkEntry->sRemotePort = atoi(pPort2);
+    		pLinkEntry->iTimeOut = atoi(pTime);
+    		pLinkEntry->lFlags |= DCS_FLAG_USED; //mark as used
+    		dcs_debug(0,0, "hst link %d setup finish role= %d p_role=%s ",iSlotIndex-1,pLinkEntry->iRole,pRole);   
+  	}//for
+
+  	conf_close(iFd);
+  	return(iSlotIndex > 0 ? 0 : -1);
+
+lblFailure:
+  	conf_close(iFd);
+  	return(-1);
+}
+// 函数名称：LoadCommCounter
+// 参数说明：
+//           无
+// 返 回 值：
+//           成功时返回commlnk中定义的链接数目,否则-1
+// 功能描述：
+//           读取commlnk中定义的链接数目
+
+int LoadCommCounter()
+{
+  	char  caFileName[256];
+  	int   iFd=-1, iCommCnt=-1;  
+    
+  	//ISE_TRACE_BGN(P_LoadBankCounter);
+
+  	//设定commlnk定义文件的绝对路径，并打开
+  	memset(caFileName, 0, sizeof(caFileName) );
+  	sprintf(caFileName, "%s/%s",getenv("ISEHOME"),DCS_MONILNK_NAME);
+  	if ((iFd = conf_open(caFileName)) < 0)
+  	{
+    		dcs_log( caFileName,strlen(caFileName), "<Moni> open monilnk.ini fail ! " );
+//    		ISE_TRACE_END(-1);
+		return -1;
+  	}
+
+  	//读取配置项'comm.max'
+  	if ( 0 >conf_get_first_number(iFd, "comm.max",&iCommCnt) || iCommCnt < 0 )
+  	{
+    		dcs_log(0,0, "<Moni> load configuration item 'comm.max' failed!");
+    		conf_close(iFd);                         
+//    		ISE_TRACE_END(-1);
+		return -1;
+  	}
+    
+  	conf_close(iFd);
+//  	ISE_TRACE_END(iCommCnt);
+	return iCommCnt;
+}
+
+void SendMessage( struct PARA_MSG *arg)
+{
+	int id;
+	int isock,i,nBytesRead,nBytesWritten;
+//	struct MSG_BUF  s_MsgBuf[10];
+	//pthread_mutex_t mutex;
+	pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
+	id=arg->NO;
+	isock=arg->iSock;
+	while (1)
+	{
+		dcs_debug(0,0, "begin wait signal  " );
+		if ( pthread_cond_wait( &g_cond, &mutex) !=0)
+		{
+			dcs_log(0,0, "wait signal error " );
+			close(isock);
+			exit(0);
+		}
+		dcs_debug(0,0, "begin Send Data  " );
+//		memcpy(&s_MsgBuf[0],&g_MsgBuf[0],sizeof(struct MSG_BUF)*10);
+//		sleep(1000);
+/*		if ( ((g_MsgBuf.cnt[id])==g_MsgBuf.s) || g_MsgBuf.s==0)
+		{
+			nBytesRead=g_MsgBuf[g_MsgBuf.s].len;
+			nBytesWritten = write_msg_to_net(isock,g_MsgBuf[g_MsgBuf].buf,nBytesRead,5000);
+			dcs_debug(g_MsgBuf[i].buf,nBytesRead, "Send Data  " );
+			if (nBytesWritten < nBytesRead)
+		    	{
+		      		dcs_log(0,0,"<Tcpip--%s> write_msg_to_net() failed:%s",g_caIdent,strerror(errno));
+		      		close(isock);
+		      		return;
+		    	}
+		    	g_MsgBuf[g_MsgBuf.s].flag[id]='0';
+			if ( g_MsgBuf.s< (MAX_BUF-1))
+				g_MsgBuf.cnt[id]=g_msgBuf.s+1;
+			else
+				g_MsgBuf.cnt[id]=0;
+			continue;
+		}
+		for ( i=g_MsgBuf.cnt[id];i<MAX_BUF;i++)
+*/		{
+//			if ( g_MsgBuf[i].flag[id]=='1' )
+//			{
+				i=g_s;
+				nBytesRead=g_MsgBuf[i].len;
+				nBytesWritten = write_msg_to_net(isock,g_MsgBuf[i].buf,nBytesRead,5000);
+				dcs_debug(g_MsgBuf[i].buf , nBytesRead, "Send Data  " );
+				if (nBytesWritten < nBytesRead)
+		    		{
+		      			dcs_log(0,0,"<Tcpip--%s> write_msg_to_net() failed:%s",g_caIdent,strerror(errno));
+		      			close(isock);
+		      			return;
+		    		}
+/*		    		g_MsgBuf[i].flag[id]='0';
+				if ( i< (MAX_BUF-1))
+					g_MsgBuf.cnt[id]=i+1;
+				else
+					g_MsgBuf.cnt[id]=0;
+*/		//	}
+//			else
+//			    continue;
+	    		
+
+		}
+	}
+	
+	
+}

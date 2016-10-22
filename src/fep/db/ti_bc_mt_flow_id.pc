@@ -1,0 +1,123 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_mt_flow_id.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_mt_flow_id_def tiBcMTFlowId ;
+EXEC SQL END DECLARE SECTION;
+
+#define MIN(a,b) a>b?b:a
+
+/*
+ *  Function:  tiBcMchntTermChargeInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcTrans   - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcMTFlowIdOpr(int oprType, ti_bc_mt_flow_id_def *p_tiBcMTFlowId, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char term_id      [  8 + 1 ];
+	  char mchnt_cd     [ 20 + 1 ];
+    EXEC SQL END DECLARE SECTION;
+
+    MEMSET_0(term_id)
+    MEMSET_0(mchnt_cd)
+
+    int i;
+    switch ( oprType )
+    {
+    
+    case GLB_DB_SELECT1:
+        strcpy_safe(term_id, p_tiBcMTFlowId->term_id, sizeof(term_id)-1);
+        rtrim(term_id);
+        if( 0 == *term_id){ strcpy(term_id,"00000000");}
+        
+        strcpy_safe(mchnt_cd, p_tiBcMTFlowId->mchnt_cd, sizeof(mchnt_cd)-1);
+        rtrim(mchnt_cd);
+
+        EXEC SQL SELECT 
+        term_id      ,
+        mchnt_cd     ,
+        sys_tra_no   
+        INTO :tiBcMTFlowId
+        FROM ti_bc_mt_flow_id
+        WHERE rtrim(mchnt_cd)=:mchnt_cd AND rtrim(term_id)=:term_id AND rownum<=1
+           FOR update
+        ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcMTFlowId, &tiBcMTFlowId, sizeof(ti_bc_mt_flow_id_def));
+            i = atoi(tiBcMTFlowId.sys_tra_no)%999999;
+            sprintf(tiBcMTFlowId.sys_tra_no,"%.6d", ++i);
+            strcpy(p_tiBcMTFlowId->sys_tra_no, tiBcMTFlowId.sys_tra_no );
+
+             EXEC SQL UPDATE ti_bc_mt_flow_id 
+             SET sys_tra_no=:tiBcMTFlowId.sys_tra_no
+                 WHERE rtrim(mchnt_cd)=:mchnt_cd
+                 AND rtrim(term_id)=:term_id
+                ;
+            *p_sqlCode = sqlca.sqlcode;
+            if ( 0 == sqlca.sqlcode )
+            {
+            }else
+            {
+                glb_Log(0,0,"<ti_bc_mt_flow_id.pc:tiBcMTFlowIdOpr:SELECT1>update Record sys_tra_no error.(mchnt_cd:%s,term_id:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", mchnt_cd,term_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );                
+            }
+            
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+
+            strcpy(p_tiBcMTFlowId->sys_tra_no,"000001");
+            EXEC SQL INSERT INTO ti_bc_mt_flow_id(term_id,mchnt_cd,sys_tra_no)
+             VALUES (:term_id,:mchnt_cd,'000001');
+            *p_sqlCode = sqlca.sqlcode;
+            if( 0 == sqlca.sqlcode )
+            {
+                //success
+            }else{
+                //exception
+                glb_Log(0,0, "<ti_bc_mt_flow_id.pc:tiBcMTFlowIdOpr:SELECT1>Insert Record (mchnt_cd:%s,term_id:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", mchnt_cd,term_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );   
+            }
+        } else
+        {
+            glb_Log(0,0, "<ti_bc_mt_flow_id.pc:tiBcMTFlowIdOpr:SELECT1>Search Record (mchnt_cd:%s,term_id:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", mchnt_cd,term_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+

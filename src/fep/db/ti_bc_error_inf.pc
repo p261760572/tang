@@ -1,0 +1,109 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_error_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_err_inf_def tiBcErrInf ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tiBcErrInfOpr
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcErrInf  - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcErrInfOpr(int oprType, ti_bc_err_inf_def *p_tiBcErrInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char resp_code       [6   + 1 ]; 
+    char fwd_ins_id_cd   [8  + 1 ]; 
+    char rcv_ins_id_cd   [8  + 1 ];
+    EXEC SQL END DECLARE SECTION;
+
+    switch ( oprType )
+    {
+    	
+    case GLB_DB_SELECT1:
+		memset(resp_code, 0, sizeof(resp_code));
+		memset(fwd_ins_id_cd, 0, sizeof(fwd_ins_id_cd));
+		memset(rcv_ins_id_cd, 0, sizeof(rcv_ins_id_cd));
+        memcpy(resp_code, p_tiBcErrInf->resp_code,sizeof(resp_code)-1);
+        memcpy(fwd_ins_id_cd, p_tiBcErrInf->fwd_ins_id_cd,sizeof(fwd_ins_id_cd)-1);
+        memcpy(rcv_ins_id_cd, p_tiBcErrInf->rcv_ins_id_cd,sizeof(rcv_ins_id_cd)-1);
+        rtrim(resp_code);
+        rtrim(fwd_ins_id_cd);
+        rtrim(fwd_ins_id_cd);
+
+        EXEC SQL SELECT 
+        resp_code       ,
+        fwd_ins_id_cd        ,
+        rcv_ins_id_cd     ,
+        fld_28          ,
+        resp_cd        ,
+        msg       
+        INTO 
+        :tiBcErrInf.resp_code       ,
+        :tiBcErrInf.fwd_ins_id_cd        ,
+        :tiBcErrInf.rcv_ins_id_cd     ,
+        :tiBcErrInf.fld_28          ,
+        :tiBcErrInf.resp_cd        ,
+        :tiBcErrInf.msg       
+        FROM ti_bc_error_inf
+        WHERE 
+        rtrim(resp_code)=:resp_code and 
+        rtrim(fwd_ins_id_cd)=:fwd_ins_id_cd and 
+        rtrim(rcv_ins_id_cd)=:rcv_ins_id_cd;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcErrInf, &tiBcErrInf, sizeof(ti_bc_err_inf_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = 0;
+            memset(p_tiBcErrInf->fld_28, '0', 6);
+            p_tiBcErrInf->fld_28[6]=0;
+            memcpy(p_tiBcErrInf->fld_28, p_tiBcErrInf->resp_code, min_strlen(p_tiBcErrInf->resp_code, 6));
+            memcpy(p_tiBcErrInf->resp_cd, p_tiBcErrInf->resp_code, min_strlen(p_tiBcErrInf->resp_code, 2));
+            strcpy(p_tiBcErrInf->msg, "未知错误"); 
+            glb_Log(0,0,"<TI_BC_ERR_INF.pc:tiBcInsInfOpr:SELECT1>Search Record (resp_code:%s,fwd_ins_id_cd:%s,rcv_ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", resp_code, fwd_ins_id_cd, rcv_ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TI_BC_ERR_INF.pc:tiBcInsInfOpr:SELECT1>Search Record (resp_code:%s,fwd_ins_id_cd:%s,rcv_ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", resp_code, fwd_ins_id_cd, rcv_ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+

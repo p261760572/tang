@@ -1,0 +1,25 @@
+SRCS=		string.c shttpd.c log.c auth.c md5.c cgi.c io_ssi.c \
+		io_file.c io_socket.c io_ssl.c io_emb.c io_dir.c io_cgi.c
+HDRS=		defs.h llist.h shttpd.h std_includes.h io.h md5.h ssl.h \
+		compat_unix.h compat_win32.h compat_rtems.h config.h
+OBJS=		$(SRCS:%.c=%.o) compat_unix.c
+PROG=		shttpd
+LIBS=		-lpthread -lnsl -ldl 
+CL_FLAGS=	/MD /TC /nologo /DNDEBUG /Os 	# MSVC compiler flags
+
+.c.o:
+	$(CC) -g -c $(CFLAGS) $< -o $@
+
+lib$(PROG).a: 
+	$(OBJS) compat_unix.o
+	$(AR) -r lib$(PROG).a $(OBJS) compat_unix.o 2>&1
+	ranlib lib$(PROG).a 2>&1
+
+static: 
+	lib$(PROG).a
+
+shttpd:
+	$(CC) -g $(CFLAGS) standalone.c -o $(PROG) $(LIBS) -L. -l$(PROG)
+
+clean:
+	rm -rf *.o 

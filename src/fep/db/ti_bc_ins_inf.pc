@@ -1,0 +1,178 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_ins_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_ins_inf_def tiBcInsInf ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tiBcInsInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcInsInf  - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcInsInfOpr(int oprType, ti_bc_ins_inf_def *p_tiBcInsInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char ins_id_cd       [8   + 1 ]; /* 接入渠道 */
+    char line_nm         [30  + 1 ]; /* 线路名称 */
+    char packet_type     [30  + 1 ];
+    EXEC SQL END DECLARE SECTION;
+
+    switch ( oprType )
+    {
+    	
+    /* 根据机构代码查询 */
+    case GLB_DB_SELECT1:
+
+        memcpy(ins_id_cd, p_tiBcInsInf->ins_id_cd,sizeof(ins_id_cd));
+        ins_id_cd[sizeof(ins_id_cd)-1]=0;
+        rtrim(ins_id_cd);
+
+        EXEC SQL SELECT 
+        ins_id_cd       ,
+        ins_type        ,
+        ins_cn_abbr     ,
+        ins_nm          ,
+        openflag        ,
+        key_type        ,
+        key_index       ,
+        key_1           ,
+        key_2           ,
+        key_3           ,
+        line_nm         ,
+        packet_type     ,
+        ip_addr         ,
+        port            ,
+        link_tp
+        INTO :tiBcInsInf     
+        FROM ti_bc_ins_inf
+        WHERE rtrim(ins_id_cd)=:ins_id_cd and rownum=1
+        ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcInsInf, &tiBcInsInf, sizeof(ti_bc_ins_inf_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TI_BC_INS_INF.pc:tiBcInsInfOpr:SELECT1>Search Record (ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TI_BC_INS_INF.pc:tiBcInsInfOpr:SELECT1>Search Record (ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    /* 根据线路名称查询 */
+    case GLB_DB_SELECT2:
+
+        strcpy_safe(line_nm, p_tiBcInsInf->line_nm,sizeof(line_nm)-1);
+        rtrim_null(line_nm, ' ');
+        
+        strcpy_safe(packet_type, p_tiBcInsInf->packet_type,sizeof(packet_type)-1);
+        rtrim_null(packet_type, ' ');
+
+        EXEC SQL SELECT 
+        ins_id_cd       ,
+        ins_type        ,
+        ins_cn_abbr     ,
+        ins_nm          ,
+        openflag        ,
+        key_type        ,
+        key_index       ,
+        key_1           ,
+        key_2           ,
+        key_3           ,
+        line_nm         ,
+        packet_type     ,
+        ip_addr         ,
+        port            ,
+        link_tp
+        INTO :tiBcInsInf     
+        FROM  ti_bc_ins_inf
+        WHERE line_nm=:line_nm and packet_type=:packet_type and rownum=1
+        ;
+        
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcInsInf, &tiBcInsInf, sizeof(ti_bc_ins_inf_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TI_BC_INS_INF.pc:tiBcInsInfOpr:SELECT1>Search Record (ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TI_BC_INS_INF.pc:tiBcInsInfOpr:SELECT1>Search Record (ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        
+    break;
+        
+    /* 根据机构代码更新三个密钥 */
+    case GLB_DB_UPDATE2:
+        memcpy(&tiBcInsInf,p_tiBcInsInf,sizeof(ti_bc_ins_inf_def));
+        memcpy(ins_id_cd, p_tiBcInsInf->ins_id_cd,sizeof(ins_id_cd));
+        ins_id_cd[sizeof(ins_id_cd)-1]=0;
+        rtrim(ins_id_cd);
+
+        EXEC SQL UPDATE ti_bc_ins_inf SET
+        key_1 =:tiBcInsInf.key_1,
+        key_2 =:tiBcInsInf.key_2,
+        key_3 =:tiBcInsInf.key_3
+               WHERE rtrim(ins_id_cd)=:ins_id_cd
+                                      ;
+        *p_sqlCode = sqlca.sqlcode;
+        /* update result */
+        if ( sqlca.sqlcode == 0 )
+        {
+        	
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TI_BC_INS_INF.pc:tiBcInsInfOpr:UPDATE1>UPDATE1 Record (ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TI_BC_INS_INF.pc:tiBcInsInfOpr:UPDATE1>UPDATE1 Record (ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+

@@ -1,0 +1,127 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_mchnt_term_charge_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+char c_sql[4096];
+ti_bc_mchnt_term_charge_inf_def tiBcMchntTermChargeInf ;
+EXEC SQL END DECLARE SECTION;
+
+#define MIN(a,b) a>b?b:a
+
+/*
+ *  Function:  tiBcMchntTermChargeInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcTrans   - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcMchntTermChargeInfOpr(int oprType, ti_bc_mchnt_term_charge_inf_def *p_tiBcMchntTermChargeInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char mchnt_tp     [  4 + 1 ];
+    char term_id      [  8 + 1 ];
+    char mchnt_cd     [ 15 + 1 ];
+    char rcv_ins_id_cd   [ 15 + 1 ];
+    EXEC SQL END DECLARE SECTION;
+
+    MEMSET_0(mchnt_tp)
+    MEMSET_0(term_id)
+    MEMSET_0(mchnt_cd)
+    MEMSET_0(rcv_ins_id_cd)
+
+    int i;
+    char caTxnMsg[4096];
+    switch ( oprType )
+    {
+    
+    case GLB_DB_SELECT1:
+    case GLB_DB_SELECT2:
+        memcpy_safe(mchnt_tp, p_tiBcMchntTermChargeInf->mchnt_tp, sizeof(mchnt_tp)-1);
+        rtrim_null(mchnt_tp,' ');
+        
+        memcpy_safe(term_id, p_tiBcMchntTermChargeInf->term_id, sizeof(term_id)-1);
+        rtrim_null(term_id,' ');
+        
+        memcpy_safe(mchnt_cd, p_tiBcMchntTermChargeInf->mchnt_cd, sizeof(mchnt_cd)-1);
+        rtrim_null(mchnt_cd,' ');
+        
+        memcpy_safe(rcv_ins_id_cd, p_tiBcMchntTermChargeInf->rcv_ins_id_cd, sizeof(rcv_ins_id_cd)-1);
+        rtrim_null(rcv_ins_id_cd,' ');
+
+        EXEC SQL SELECT 
+        mchnt_tp     ,
+        term_id      ,
+        mchnt_cd     ,
+        rcv_ins_id_cd,
+        term_id_c    ,
+        mchnt_cd_c   ,
+        '0'
+        INTO :tiBcMchntTermChargeInf        	
+        FROM (
+             SELECT 
+             mchnt_tp     ,
+             term_id      ,
+             mchnt_cd     ,
+             rcv_ins_id_cd,
+             term_id_c    ,
+             mchnt_cd_c   
+             FROM ti_bc_mchnt_term_charge_inf
+             WHERE ( mchnt_tp=:mchnt_tp OR rtrim(mchnt_tp)='*' )
+             AND ( term_id=:term_id OR rtrim(term_id)='*' )
+             AND mchnt_cd=:mchnt_cd
+             AND  ( rcv_ins_id_cd=:rcv_ins_id_cd OR rtrim(rcv_ins_id_cd)='*' )
+             ORDER BY mchnt_tp desc, term_id desc, mchnt_cd desc, rcv_ins_id_cd desc
+             )                     
+        WHERE rownum<=1
+        ORDER BY ROWNUM ASC
+        ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcMchntTermChargeInf, &tiBcMchntTermChargeInf, sizeof(ti_bc_mchnt_term_charge_inf_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0, "<FILE:%s,LINE:%d><TI_BC_MCHNT_TERM_CHARGE_INF.pc:tiBcMchntTermChargeInfOpr:SELECT1>Search Record (mchnt_tp:%s,mchnt_cd:%s,term_id:%s,rcv_ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n",__FILE__,__LINE__, mchnt_tp,mchnt_cd,term_id, rcv_ins_id_cd,sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<FILE:%s,LINE:%d><TI_BC_MCHNT_TERM_CHARGE_INF.pc:tiBcMchntTermChargeInfOpr:SELECT1>Search Record (mchnt_tp:%s,mchnt_cd:%s,term_id:%s,rcv_ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", __FILE__,__LINE__, mchnt_tp,mchnt_cd,term_id,rcv_ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+
+

@@ -1,0 +1,164 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_qs_mchnt_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_qs_mchnt_inf_def tiBcQsMchntInf ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tiBcQsMchntInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode      - 返回值， 输出
+ *      p_tiBcQsMchntInf - 查找条件，输入
+ *                       查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcQsMchntInfOpr(int oprType, ti_bc_qs_mchnt_inf_def *p_tiBcQsMchntInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char term_id         [ 8 + 1 ];
+    char mchnt_cd        [20 + 1 ];  
+    char rcv_ins_id_cd   [15 + 1 ];
+    char mkey_index      [3  + 1 ];
+    char mkey_1          [16 + 1 ];
+    char mkey_2          [16 + 1 ];
+    char mkey_3          [16 + 1 ];
+    EXEC SQL END DECLARE SECTION;
+
+    memset(term_id,0,sizeof(term_id));
+    memset(mchnt_cd,0,sizeof(mchnt_cd));
+    memset(rcv_ins_id_cd,0,sizeof(rcv_ins_id_cd));
+    memset(mkey_index,0,sizeof(mkey_index));
+    memset(mkey_1,0,sizeof(mkey_1));
+    memset(mkey_2,0,sizeof(mkey_2));
+    memset(mkey_3,0,sizeof(mkey_3));
+
+    switch (oprType)
+    {
+    case GLB_DB_SELECT1:
+
+        strcpy_safe(term_id, p_tiBcQsMchntInf->term_id,sizeof(term_id)-1);
+        rtrim_null(term_id,' ');
+        
+        strcpy_safe(mchnt_cd, p_tiBcQsMchntInf->mchnt_cd,sizeof(mchnt_cd)-1);
+        rtrim_null(mchnt_cd,' ');
+        
+        strcpy_safe(rcv_ins_id_cd, p_tiBcQsMchntInf->rcv_ins_id_cd,sizeof(rcv_ins_id_cd)-1);
+        rtrim_null(rcv_ins_id_cd,' ');
+
+        EXEC SQL SELECT 
+        mchnt_cd  	       ,
+        term_id   	       ,
+        rcv_ins_id_cd      ,
+        mchnt_cn_abbr      ,
+        reversal_mode      ,
+        openflag           ,
+        mkey_index         ,
+        mkey_1             ,
+        mkey_2             ,
+        mkey_3             
+        INTO 
+        :tiBcQsMchntInf.mchnt_cd  	       ,
+        :tiBcQsMchntInf.term_id   	       ,
+        :tiBcQsMchntInf.rcv_ins_id_cd      ,
+        :tiBcQsMchntInf.mchnt_cn_abbr      ,
+        :tiBcQsMchntInf.reversal_mode      ,
+        :tiBcQsMchntInf.openflag           ,
+        :tiBcQsMchntInf.mkey_index         ,
+        :tiBcQsMchntInf.mkey_1             ,
+        :tiBcQsMchntInf.mkey_2             ,
+        :tiBcQsMchntInf.mkey_3             
+        	
+        FROM ti_bc_qs_mchnt_inf
+        WHERE mchnt_cd=:mchnt_cd and term_id=:term_id and rcv_ins_id_cd=:rcv_ins_id_cd
+        ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcQsMchntInf, &tiBcQsMchntInf, sizeof(ti_bc_qs_mchnt_inf_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<FILE:%s,LINE:%d><ti_bc_qs_mchnt_inf.pc:tiBcQsMchntInfOpr:SELECT1>Search Record (mchnt_cd:%s,term_id:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n",__FILE__,__LINE__, mchnt_cd,term_id,sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<FILE:%s,LINE:%d><ti_bc_qs_mchnt_inf.pc:tiBcQsMchntInfOpr:SELECT1>Search Record (mchnt_cd:%s,term_id:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n",__FILE__,__LINE__, mchnt_cd,term_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    case GLB_DB_UPDATE2:
+
+        strcpy_safe(term_id, p_tiBcQsMchntInf->term_id,sizeof(term_id)-1);
+        rtrim_null(term_id,' ');
+        
+        strcpy_safe(mchnt_cd, p_tiBcQsMchntInf->mchnt_cd,sizeof(mchnt_cd)-1);
+        rtrim_null(mchnt_cd,' ');
+        
+        strcpy_safe(rcv_ins_id_cd, p_tiBcQsMchntInf->rcv_ins_id_cd,sizeof(rcv_ins_id_cd)-1);
+        rtrim_null(rcv_ins_id_cd,' ');
+
+        strcpy_safe(mkey_1, p_tiBcQsMchntInf->mkey_1,16);
+        rtrim_null(mkey_1, ' ');        
+
+				 strcpy_safe(mkey_2, p_tiBcQsMchntInf->mkey_2,16);
+        rtrim_null(mkey_2, ' '); 
+        
+        strcpy_safe(mkey_3, p_tiBcQsMchntInf->mkey_3,16);
+        rtrim_null(mkey_3, ' '); 
+
+        EXEC SQL UPDATE ti_bc_qs_mchnt_inf
+        SET mkey_1=:mkey_1, mkey_2=:mkey_2, mkey_3=:mkey_3
+         WHERE mchnt_cd=:mchnt_cd and term_id=:term_id and rcv_ins_id_cd=:rcv_ins_id_cd
+        ;
+        
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+        	
+        } else if ( memcmp(sqlca.sqlerrm.sqlerrmc, "ORA-00001", 0 ) == 0 )
+        {
+            *p_sqlCode = SQL_ERD_UNIKEY;
+            glb_Log(0,0,"<ti_bc_qs_mchnt_inf.pc:tiBcQsMchntInfOpr:UPDATE2>Search Record (mchnt_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", mchnt_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<ti_bc_qs_mchnt_inf.pc:tiBcQsMchntInfOpr:UPDATE2>Search Record (mchnt_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", mchnt_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+    *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+

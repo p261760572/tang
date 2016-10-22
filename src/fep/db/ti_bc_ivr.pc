@@ -1,0 +1,576 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_ivr_inf_key_inf.h"
+#include "./inc/ti_bc_ivr_settle_inf.h"
+#include "./inc/ti_bc_ivr_mobile_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+char c_sql[4096];
+ti_bc_ivr_inf_key_inf_def tiBcIvrInfKeyInf ;
+ti_bc_ivr_settle_inf_def tiBcIvrSettleInf ;
+ti_bc_ivr_mobile_inf_def g_tiBcIvrMobileInf ;
+EXEC SQL END DECLARE SECTION;
+
+#define MIN(a,b) a>b?b:a
+
+/*
+ *  Function:  tiBcApplConvToIvrOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      InBuf         - 报文输入串
+ *      pcaOprCmd     - 指令串
+ *      pcaRspCode    - 信息码串
+ *      OprListBuf    - 操作码串 输出
+ *      OutBuf        - 信息串 输出
+ *      p_sqlCode     - 返回值， 输出
+ *      piLen         - 操作码串长度, 输出
+ *      piLen         - 信息串长度, 输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcApplConvToIvrOpr(char *InBuf, char *pcaOprCmd, char *pcaRspCode, char *OprListBuf, char *OutBuf, int *p_sqlCode, int *piOprListLen, int *piLen)
+{
+    char   *caString;
+    char   *caString1;
+    char   *caString2;
+    char   caStrBuf[4096];;
+    char   caTxnMsg[4096];
+    char   caStrInf[4096];
+    char   buff[4096];
+    char   info[4096];
+    char   info1[4096];
+    char   caItem[4096];
+    int    sqlCode;
+    int    iRet,iOprListLen=0, iLen=0, iLength=0, ioffsetLength=0;
+
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char opr_cmd     [  4 + 1 ];
+    char rspcode     [  6 + 1 ];
+    EXEC SQL END DECLARE SECTION;
+
+    ti_bc_ivr_mobile_inf_def *p_tiBcIvrMobileInf = &g_tiBcIvrMobileInf ;
+    dcs_debug(pcaOprCmd, strlen(pcaOprCmd), "OprCmd");
+    dcs_debug(pcaRspCode, strlen(pcaRspCode), "RspCode");
+    MEMSET_0(opr_cmd)
+    MEMSET_0(rspcode)
+
+    memcpy(opr_cmd, pcaOprCmd, 4);
+    rtrim(opr_cmd);
+    ADJUST_STRING(opr_cmd);
+
+    memcpy(rspcode, pcaRspCode, 6);
+    rtrim(rspcode);
+    ADJUST_STRING(rspcode);
+
+    rtrim(InBuf);
+    EXEC SQL DECLARE ti_bc_ivr_settle_inf_cur CURSOR FOR
+         SELECT opr_list, seq_no, data_list, data_len, data_flag, spe_cmd, spe_length, memo
+           FROM ti_bc_ivr_settle_inf
+          WHERE rtrim(opr_cmd)=:opr_cmd
+            AND rtrim(rspcode)=:rspcode
+          ORDER BY seq_no ASC;
+    *p_sqlCode = sqlca.sqlcode;
+    if ( sqlca.sqlcode )
+    {
+        sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcApplConvToIvrOpr:SELECT1>declare ti_bc_ivr_settle_inf_cur Record (rspcode:%s,opr_cmd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", rspcode,opr_cmd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        return -1;
+    }
+
+    EXEC SQL OPEN ti_bc_ivr_settle_inf_cur;
+    *p_sqlCode = sqlca.sqlcode;
+    if ( sqlca.sqlcode )
+    {
+        sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcApplConvToIvrOpr:SELECT1>open ti_bc_ivr_settle_inf_cur Record (rspcode:%s,opr_cmd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", rspcode,opr_cmd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        return -2;
+    }
+
+    while ( 1 )
+    {
+       	memset(&tiBcIvrSettleInf, 0, sizeof(ti_bc_ivr_settle_inf_def));
+
+	EXEC SQL FETCH ti_bc_ivr_settle_inf_cur into :tiBcIvrSettleInf.opr_list, :tiBcIvrSettleInf.seq_no, :tiBcIvrSettleInf.data_list, :tiBcIvrSettleInf.data_len, :tiBcIvrSettleInf.data_flag, :tiBcIvrSettleInf.spe_cmd, :tiBcIvrSettleInf.spe_length, :tiBcIvrSettleInf.memo;
+       	*p_sqlCode = sqlca.sqlcode;
+       	if ( sqlca.sqlcode )
+	if(sqlca.sqlcode  == 1403)
+       		break;
+	if(sqlca.sqlcode )
+	{
+        	sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcApplConvToIvrOpr:SELECT1>fetch ti_bc_ivr_settle_inf Record (rspcode:%s,opr_cmd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", rspcode,opr_cmd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        	glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+		EXEC SQL CLOSE ti_bc_ivr_settle_inf_cur ;
+		return -3;
+	}
+
+	/* 操作码串 */
+    	memcpy( OprListBuf+iOprListLen, tiBcIvrSettleInf.opr_list, 2);
+	iOprListLen = iOprListLen + 2;
+
+	if (tiBcIvrSettleInf.data_flag[0] == '0' && tiBcIvrSettleInf.data_len == 0)
+	{
+                continue; 
+	}
+	else
+	{           
+    		EXEC SQL DECLARE ti_bc_ivr_inf_key_inf_cur CURSOR FOR
+         		SELECT keyid, keymemo, keyflag  
+           		FROM ti_bc_ivr_inf_key_inf
+          		WHERE rtrim(opr_cmd)=:opr_cmd
+            		AND rtrim(rspcode)=:rspcode;
+    		*p_sqlCode = sqlca.sqlcode;
+    		if ( sqlca.sqlcode )
+    		{
+        		sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcApplConvToIvrOpr:SELECT1>declare ti_bc_ivr_inf_key_inf_cur Record (rspcode:%s,opr_cmd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", rspcode,opr_cmd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        		glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+			EXEC SQL CLOSE ti_bc_ivr_settle_inf_cur ;
+        		return -4;
+    		}
+		
+    		EXEC SQL OPEN ti_bc_ivr_inf_key_inf_cur;
+    		*p_sqlCode = sqlca.sqlcode;
+    		if ( sqlca.sqlcode )
+    		{
+        		sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcApplConvToIvrOpr:SELECT1>open ti_bc_ivr_inf_key_inf_cur Record (rspcode:%s,opr_cmd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", rspcode,opr_cmd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        		glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+			EXEC SQL CLOSE ti_bc_ivr_settle_inf_cur ;
+        		return -5;
+    		}
+	
+		memset( caStrInf, 0, sizeof(caStrInf));
+		memset( buff, 0, sizeof(buff));
+		memset( info, 0, sizeof(info));
+		if ((strlen(tiBcIvrSettleInf.data_list))==0)
+		{
+    			memcpy( caStrInf, tiBcIvrSettleInf.data_list, strlen(tiBcIvrSettleInf.data_list));
+		}
+		else
+		{
+        		iRet = GBKToUTF8(tiBcIvrSettleInf.data_list, strlen(tiBcIvrSettleInf.data_list), info, sizeof(info));
+        		if( 0 < iRet )
+			{
+    				memcpy( caStrInf, info, iRet);
+			}
+			else
+			{
+        			sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcApplConvToIvrOpr:GBKToUTF8>Error[%d].\n", iRet );
+        			glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+				EXEC SQL CLOSE ti_bc_ivr_settle_inf_cur ;
+        			return -100;
+			}
+		}
+    		while(1)
+    		{
+       			memset(&tiBcIvrInfKeyInf, 0, sizeof(ti_bc_ivr_inf_key_inf_def));
+		
+			EXEC SQL FETCH ti_bc_ivr_inf_key_inf_cur into :tiBcIvrInfKeyInf.keyid, :tiBcIvrInfKeyInf.keymemo, :tiBcIvrInfKeyInf.keyflag;
+       			*p_sqlCode = sqlca.sqlcode;
+       			if ( sqlca.sqlcode )
+			if(sqlca.sqlcode  == 1403)
+        			break;
+			if(sqlca.sqlcode )
+			{
+        			sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcApplConvToIvrOpr:SELECT1>fetch ti_bc_ivr_inf_key_inf Record (rspcode:%s,opr_cmd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", rspcode,opr_cmd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        			glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+				EXEC SQL CLOSE ti_bc_ivr_settle_inf_cur ;
+				EXEC SQL CLOSE ti_bc_ivr_inf_key_inf_cur ;
+				return -6;
+			}
+			caString = NULL;
+    			rtrim(caStrInf);
+    			rtrim(tiBcIvrInfKeyInf.keyid);
+    			rtrim(tiBcIvrInfKeyInf.keymemo);
+        		caString = (char *)strstr( (char *)caStrInf, tiBcIvrInfKeyInf.keyid);  /* 信息串 */
+      			sprintf(caTxnMsg, " StrInf[%s] strstr keyid[%s] caString[%s] \n", caStrInf, tiBcIvrInfKeyInf.keyid, caString );
+       			glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        		if (caString)
+        		{
+				if (tiBcIvrInfKeyInf.keyflag[0] == '0')
+				{
+        				caString1 = (char *)strstr( (char *)InBuf, tiBcIvrInfKeyInf.keyid); /* 报文发送过来的关键字串 */
+      					sprintf(caTxnMsg, " StrInf[%s] strstr keyid[%s] caString1[%s] \n", InBuf, tiBcIvrInfKeyInf.keyid, caString1 );
+       					glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        				if (caString1)
+        				{
+    						memset( caStrBuf, 0, sizeof(caStrBuf));
+						memcpy( caStrBuf, caStrInf, caString-caStrInf);
+        					caString2 = (char *)strstr( (char *)caString1, "<~~/~~>");
+        					if (caString2)
+						{
+							if (!strcmp(tiBcIvrInfKeyInf.keyid, "<~~AMT~~>"))
+							{
+    								memset( info, 0, sizeof(info));
+    								memset( info1, 0, sizeof(info1));
+								memcpy( info, caString1+strlen(tiBcIvrInfKeyInf.keyid), caString2 - caString1 - strlen(tiBcIvrInfKeyInf.keyid) );
+								sprintf(info1, "%.2lf", atof( info ) / 100.00);
+								memcpy( caStrBuf+(caString-caStrInf), info1, strlen(info1));
+								strcpy( caStrBuf+(caString-caStrInf)+strlen(info1), caString+strlen(tiBcIvrInfKeyInf.keyid));
+      								sprintf(caTxnMsg, " caStrBuf[%s]\n", caStrBuf );
+							}
+							else if (!strcmp(tiBcIvrInfKeyInf.keyid, "<~~TEL~~>"))
+							{
+    								memset( info, 0, sizeof(info));
+								memcpy( info, caString1+strlen(tiBcIvrInfKeyInf.keyid), caString2 - caString1 - strlen(tiBcIvrInfKeyInf.keyid) );
+								if (!memcmp(info, "0", 1))
+								{
+    									memset( info, 0, sizeof(info));
+									memcpy( info, caString1+strlen(tiBcIvrInfKeyInf.keyid)+1, caString2 - caString1 - strlen(tiBcIvrInfKeyInf.keyid)-1);
+								}
+								memset(&g_tiBcIvrMobileInf, 0, sizeof(ti_bc_ivr_mobile_inf_def));
+								memcpy(p_tiBcIvrMobileInf->mobileno, info, strlen(info));
+								tiBcIvrMobileInfOpr(GLB_DB_SELECT1, p_tiBcIvrMobileInf, &sqlCode);
+       								if ( (0 != sqlCode) && (SQL_ERD_NONE_RECORD != sqlCode) )
+								{
+        								sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcIvrMobileInfOpr Error.\n");
+        								glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+									EXEC SQL CLOSE ti_bc_ivr_inf_key_inf_cur ;
+									EXEC SQL CLOSE ti_bc_ivr_settle_inf_cur ;
+									return -8;
+								}
+								else if (SQL_ERD_NONE_RECORD == sqlCode)
+								{
+									memcpy( caStrBuf+(caString-caStrInf), "0", 1);
+									memcpy( caStrBuf+(caString-caStrInf)+1, info, strlen(info));
+									strcpy( caStrBuf+(caString-caStrInf)+1+strlen(info), caString+strlen(tiBcIvrInfKeyInf.keyid));
+								}
+								else
+								{
+									rtrim(p_tiBcIvrMobileInf->preno);
+									memcpy( caStrBuf+(caString-caStrInf), p_tiBcIvrMobileInf->preno, strlen(p_tiBcIvrMobileInf->preno));
+									memcpy( caStrBuf+(caString-caStrInf)+strlen(p_tiBcIvrMobileInf->preno), info, strlen(info));
+									strcpy( caStrBuf+(caString-caStrInf)+strlen(p_tiBcIvrMobileInf->preno)+strlen(info), caString+strlen(tiBcIvrInfKeyInf.keyid));
+								}
+							}
+							else  
+							{
+								memcpy( caStrBuf+(caString-caStrInf), caString1+strlen(tiBcIvrInfKeyInf.keyid), caString2 - caString1 - strlen(tiBcIvrInfKeyInf.keyid) );
+								strcpy( caStrBuf+(caString-caStrInf)+(caString2 - caString1 - strlen(tiBcIvrInfKeyInf.keyid)), caString+strlen(tiBcIvrInfKeyInf.keyid));
+      								sprintf(caTxnMsg, " caStrBuf[%s]\n", caStrBuf );
+       								glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+							}
+						}
+						else
+						{
+        						sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcApplConvToIvrOpr:没有结束符<~~/~~> not exist Error.\n");
+        						glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+							EXEC SQL CLOSE ti_bc_ivr_inf_key_inf_cur ;
+							EXEC SQL CLOSE ti_bc_ivr_settle_inf_cur ;
+							return -7;
+						}
+					}
+					else
+					{
+    						memset( caStrBuf, 0, sizeof(caStrBuf));
+						memcpy( caStrBuf, caStrInf, caString-caStrInf);
+						strcpy( caStrBuf+(caString-caStrInf), caString+strlen(tiBcIvrInfKeyInf.keyid)); 
+      						sprintf(caTxnMsg, " caStrBuf[%s]\n", caStrBuf );
+       						glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+					}
+				}
+				else
+				{
+    					memset( caStrBuf, 0, sizeof(caStrBuf));
+					memcpy( caStrBuf, caStrInf, caString-caStrInf);
+					memcpy( caStrBuf+(caString-caStrInf), tiBcIvrInfKeyInf.keymemo, strlen(tiBcIvrInfKeyInf.keymemo));
+					strcpy( caStrBuf+(caString-caStrInf)+strlen(tiBcIvrInfKeyInf.keymemo), caString+strlen(tiBcIvrInfKeyInf.keyid)); 
+      					sprintf(caTxnMsg, " caStrBuf[%s]\n", caStrBuf );
+       					glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+				}
+				memset( caStrInf, 0, sizeof(caStrInf));
+    				memcpy( caStrInf, caStrBuf, strlen(caStrBuf));
+
+      				sprintf(caTxnMsg, " caStrInf end [%s]\n", caStrInf );
+       				glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+			}
+		}
+    		EXEC SQL CLOSE ti_bc_ivr_inf_key_inf_cur;
+	
+		if (tiBcIvrSettleInf.data_flag[0] == '0')
+		{
+			memcpy(OutBuf+iLen, caStrInf, tiBcIvrSettleInf.data_len);
+			iLen = iLen + tiBcIvrSettleInf.data_len;
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == '1')
+		{
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%04d", strlen(caStrInf));
+			asc_to_bcd(caItem,caItem,4,0);
+			memcpy(OutBuf+iLen, caItem, 2);
+			iLen = iLen + 2;
+			memcpy(OutBuf+iLen, caStrInf, strlen(caStrInf));
+			iLen = iLen + strlen(caStrInf);
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == '2')
+		{
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%02d", strlen(caStrInf));
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			memcpy(OutBuf+iLen, caStrInf, strlen(caStrInf));
+			iLen = iLen + strlen(caStrInf);
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == '3')
+		{
+			ioffsetLength = iLen;
+			iLen = iLen + 2;
+			iLength = 0;
+			memset( caItem, 0, sizeof(caItem));
+			memcpy( caItem, tiBcIvrSettleInf.spe_cmd, 2);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%02d", tiBcIvrSettleInf.spe_length);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x00, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x00, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%04d", iLength);
+			asc_to_bcd(caItem,caItem,4,0);
+			memcpy(OutBuf+ioffsetLength, caItem, 2);
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == '4')
+		{
+			ioffsetLength = iLen;
+			iLen = iLen + 2;
+			iLength = 0;
+			memset( caItem, 0, sizeof(caItem));
+			memcpy( caItem, tiBcIvrSettleInf.spe_cmd, 2);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%02d", tiBcIvrSettleInf.spe_length);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x01, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x00, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memcpy(OutBuf+iLen, caStrInf, strlen(caStrInf));
+			iLen = iLen + strlen(caStrInf);
+			iLength = iLength + strlen(caStrInf);
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%04d", iLength);
+			asc_to_bcd(caItem,caItem,4,0);
+			memcpy(OutBuf+ioffsetLength, caItem, 2);
+
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == '5')
+		{
+			ioffsetLength = iLen;
+			iLen = iLen + 2;
+			iLength = 0;
+			memset( caItem, 0, sizeof(caItem));
+			memcpy( caItem, tiBcIvrSettleInf.spe_cmd, 2);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%02d", tiBcIvrSettleInf.spe_length);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x10, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x00, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%04d", iLength);
+			asc_to_bcd(caItem,caItem,4,0);
+			memcpy(OutBuf+ioffsetLength, caItem, 2);
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == '6')
+		{
+			ioffsetLength = iLen;
+			iLen = iLen + 2;
+			iLength = 0;
+			memset( caItem, 0, sizeof(caItem));
+			memcpy( caItem, tiBcIvrSettleInf.spe_cmd, 2);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%02d", tiBcIvrSettleInf.spe_length);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x11, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x00, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memcpy(OutBuf+iLen, caStrInf, strlen(caStrInf));
+			iLen = iLen + strlen(caStrInf);
+			iLength = iLength + strlen(caStrInf);
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%04d", iLength);
+			asc_to_bcd(caItem,caItem,4,0);
+			memcpy(OutBuf+ioffsetLength, caItem, 2);
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == '7')
+		{
+			ioffsetLength = iLen;
+			iLen = iLen + 2;
+			iLength = 0;
+			memset( caItem, 0, sizeof(caItem));
+			memcpy( caItem, tiBcIvrSettleInf.spe_cmd, 2);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%02d", tiBcIvrSettleInf.spe_length);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x00, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x11, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%04d", iLength);
+			asc_to_bcd(caItem,caItem,4,0);
+			memcpy(OutBuf+ioffsetLength, caItem, 2);
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == '8')
+		{
+			ioffsetLength = iLen;
+			iLen = iLen + 2;
+			iLength = 0;
+			memset( caItem, 0, sizeof(caItem));
+			memcpy( caItem, tiBcIvrSettleInf.spe_cmd, 2);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%02d", tiBcIvrSettleInf.spe_length);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x01, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x11, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memcpy(OutBuf+iLen, caStrInf, strlen(caStrInf));
+			iLen = iLen + strlen(caStrInf);
+			iLength = iLength + strlen(caStrInf);
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%04d", iLength);
+			asc_to_bcd(caItem,caItem,4,0);
+			memcpy(OutBuf+ioffsetLength, caItem, 2);
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == '9')
+		{
+			ioffsetLength = iLen;
+			iLen = iLen + 2;
+			iLength = 0;
+			memset( caItem, 0, sizeof(caItem));
+			memcpy( caItem, tiBcIvrSettleInf.spe_cmd, 2);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%02d", tiBcIvrSettleInf.spe_length);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x10, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x11, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%04d", iLength);
+			asc_to_bcd(caItem,caItem,4,0);
+			memcpy(OutBuf+ioffsetLength, caItem, 2);
+		}
+		else if (tiBcIvrSettleInf.data_flag[0] == 'a')
+		{
+			ioffsetLength = iLen;
+			iLen = iLen + 2;
+			iLength = 0;
+			memset( caItem, 0, sizeof(caItem));
+			memcpy( caItem, tiBcIvrSettleInf.spe_cmd, 2);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%02d", tiBcIvrSettleInf.spe_length);
+			asc_to_bcd(caItem,caItem,2,0);
+			memcpy(OutBuf+iLen, caItem, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x11, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memset(OutBuf+iLen, 0x11, 1);
+			iLen = iLen + 1;
+			iLength = iLength + 1;
+			memcpy(OutBuf+iLen, caStrInf, strlen(caStrInf));
+			iLen = iLen + strlen(caStrInf);
+			iLength = iLength + strlen(caStrInf);
+			memset( caItem, 0, sizeof(caItem));
+			sprintf( caItem, "%04d", iLength);
+			asc_to_bcd(caItem,caItem,4,0);
+			memcpy(OutBuf+ioffsetLength, caItem, 2);
+		}
+	}
+    }
+    EXEC SQL CLOSE ti_bc_ivr_settle_inf_cur ;
+
+    *piOprListLen = iOprListLen;
+    *piLen = iLen;
+
+    return 0;
+}
+
+

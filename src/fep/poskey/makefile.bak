@@ -1,0 +1,32 @@
+LIB =$(HOME)/src/lib/libdcs.a
+LIBS=$(LIB) -L$(HOME)/src/lib  -ldcsutil -ltimer -lsecu -liso8583 -lfold
+BIN =$(HOME)/run/bin
+CFLAGS=-I $(HOME)/src/fep/include -I $(HOME)/src/folder/inc -I $(HOME)/src/fep/hst/inc  -I.
+ORACLE_LIB= -L$(ORACLE_HOME)/lib -lsqlplus -lclntsh
+OBJ =appCons.o  publicfn.o dssappfn.o dssdclfn.o \
+			pc_proc.o \
+			desc.o
+EXE = msgsrv   
+
+.c.o:
+	$(CC) -c $(CFLAGS) $*.c
+
+obj:    $(OBJ) cleanup
+exe:    $(EXE) cleanup
+all:    $(OBJ) $(EXE) cleanup
+
+dssdclfn.c:dssdclfn.pc
+	proc dssdclfn.pc dssdclfn.c  unsafe_null=yes   mode=oracle dbms=v8 include=$(HOME)/src/fep/include  include=$(HOME)/src/folder/inc
+
+dssappfn.c:dssappfn.pc
+	proc dssappfn.pc dssappfn.c  unsafe_null=yes   mode=oracle dbms=v8 include=$(HOME)/src/fep/include  include=$(HOME)/src/folder/inc
+
+msgsrv: $(OBJ)
+	$(CC) -go msgsrv -Kthread  $(CFLAGS) $(OBJ) $(LIBS) $(ORACLE_LIB)
+	strip msgsrv 2>/dev/null
+	mv msgsrv $(BIN)/msgsrv
+
+cleanup:
+	rm -f *.o dssdclfn.c dssappfn.c 
+
+

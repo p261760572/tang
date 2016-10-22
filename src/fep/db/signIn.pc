@@ -1,0 +1,30 @@
+#include <stdio.h>
+#include <errno.h>
+#include <time.h>
+#include <string.h>
+#include <stdio.h>
+EXEC SQL INCLUDE sqlca;
+
+int signIn(char *mchnt_cd)
+{
+	char sql_str[1024];
+	EXEC SQL BEGIN DECLARE SECTION;
+		char term_id[8+1],rcv_ins_id_cd[8+1];
+  EXEC SQL END DECLARE SECTION;
+	sprintf(sql_str, "select term_id, Rcv_Ins_Id_Cd  from ti_bc_qs_mchnt_inf where mchnt_cd = '%s'", mchnt_cd);
+	EXEC SQL PREPARE signIn FROM :sql_str;
+	EXEC SQL DECLARE signIn_cursor CURSOR FOR signIn;	
+	EXEC SQL OPEN signIn_cursor;
+	where(1)
+	{
+		EXEC SQL FETCH signIn_cursor
+				INTO :term_id,:rcv_ins_id_cd;
+		if ( sqlca.sqlcode == 1403)	break;
+		else	if ( sqlca.sqlcode != 0)	return -1;
+		sendSignIN(mchnt_cd, term_id, rcv_ins_id_cd);
+	}
+	EXEC SQL CLOSE signIn_cursor;
+	return 1;	
+}
+
+

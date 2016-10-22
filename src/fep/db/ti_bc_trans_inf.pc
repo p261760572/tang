@@ -1,0 +1,155 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_trans_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_trans_inf_def tiBcTransInf ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tiBcTransInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcTrans   - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcTransInfOpr(int oprType, ti_bc_trans_inf_def *p_tiBcTransInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char  trans_chnl      [30+ 1] ; 
+    char  msg_tp          [4 + 1] ;  
+    char  proc_cd         [6 + 1] ;  
+    char  pos_cond_cd     [2 + 1] ;  
+    char  mchnt_tp        [4 + 1] ;  
+    EXEC SQL END DECLARE SECTION;
+
+    char caTxnMsg[4096];
+
+    memset(trans_chnl, 0, sizeof(trans_chnl));
+    memset(msg_tp, 0, sizeof(msg_tp));
+    memset(proc_cd, 0, sizeof(proc_cd));
+    memset(pos_cond_cd, 0, sizeof(pos_cond_cd));
+    memset(mchnt_tp, 0, sizeof(mchnt_tp));
+
+    switch ( oprType )
+    {
+    
+    case GLB_DB_SELECT1:
+
+        memcpy(trans_chnl, p_tiBcTransInf->trans_chnl,30);
+        trans_chnl[30]=0;
+        rtrim(trans_chnl);
+        if ( *trans_chnl==0 )
+            strcpy(trans_chnl,"*");
+
+        memcpy(msg_tp, p_tiBcTransInf->msg_tp,4);
+        msg_tp[4]=0;
+        rtrim(msg_tp);
+
+        memcpy(proc_cd, p_tiBcTransInf->proc_cd,6);
+        proc_cd[6]=0;
+        rtrim(proc_cd);
+        if ( *proc_cd==0 )
+            strcpy(proc_cd,"*");
+
+        memcpy(pos_cond_cd, p_tiBcTransInf->pos_cond_cd,2);
+        pos_cond_cd[2]=0;
+        rtrim(pos_cond_cd);
+        if ( *pos_cond_cd==0 )
+            strcpy(pos_cond_cd,"*");
+
+        memcpy(mchnt_tp, p_tiBcTransInf->mchnt_tp,4);
+        mchnt_tp[4]=0;
+        rtrim(mchnt_tp);
+        if ( *mchnt_tp==0 )
+            strcpy(mchnt_tp,"*");
+
+        EXEC SQL SELECT 
+        trans_chnl      ,
+        msg_tp          ,
+        proc_cd         ,
+        pos_cond_cd     ,
+        mchnt_tp        ,
+        respFlag        ,
+        DbFlag          ,
+        CardBinDetFlag  ,
+        Mid_chk_flg     ,
+        white_black_flag,
+        opFlag          ,
+        TransType       
+        INTO :tiBcTransInf 
+        FROM (SELECT 
+              trans_chnl      ,
+              msg_tp          ,
+              proc_cd         ,
+              pos_cond_cd     ,
+              mchnt_tp        ,
+              respFlag        ,
+              DbFlag          ,
+              CardBinDetFlag  ,
+              Mid_chk_flg     ,
+              white_black_flag,
+              opFlag          ,
+              TransType       
+              FROM ti_bc_trans_inf
+              WHERE ( rtrim(trans_chnl)=:trans_chnl OR rtrim(trans_chnl)='*' )
+              AND ( rtrim(msg_tp)=:msg_tp OR rtrim(msg_tp)='*' )
+              AND ( rtrim(proc_cd)=:proc_cd OR rtrim(proc_cd)='*' )
+              AND ( rtrim(pos_cond_cd)=:pos_cond_cd OR rtrim(pos_cond_cd)='*' )
+              AND ( rtrim(mchnt_tp)=:mchnt_tp OR rtrim(mchnt_tp)='*' )
+              ORDER BY  trans_chnl desc, msg_tp desc,proc_cd desc,pos_cond_cd desc,mchnt_tp desc
+             )
+        WHERE rownum<=1
+        ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcTransInf, &tiBcTransInf, sizeof(ti_bc_trans_inf_def));
+            
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            sprintf(caTxnMsg, "<TI_BC_TRANS_INF.pc:tiBcTransInfOpr:SELECT1>Search Record (trans_chnl:%s,msg_tp:%s,proc_cd:%s,pos_cond_cd:%s,mchnt_tp:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", trans_chnl,msg_tp,proc_cd,pos_cond_cd,mchnt_tp, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        } else
+        {
+            sprintf(caTxnMsg, "<TI_BC_TRANS_INF.pc:tiBcTransInfOpr:SELECT1>Search Record (trans_chnl:%s,msg_tp:%s,proc_cd:%s,pos_cond_cd:%s,mchnt_tp:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", trans_chnl,msg_tp,proc_cd,pos_cond_cd,mchnt_tp, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+

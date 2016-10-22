@@ -1,0 +1,180 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/msg_send.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+/*
+ *  Function:  msgSendInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcTrans   - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int MsgSendOpr(int oprType, msg_send_def *p_msgSendInf, int *p_sqlCode)
+{
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char	msg_id		[ 38 + 1 ];
+    char 	phone 		[ 16 + 1 ];
+    char	mchnt_cd	[ 20 + 1 ];
+    char	loc_trans_dt[  8 + 1 ];
+    char	sys_tra_no	[  6 + 1 ];	
+    msg_send_def 	msgSendInf;
+    EXEC SQL END DECLARE SECTION;
+
+    MEMSET_0(msg_id)
+
+    switch ( oprType )
+    {
+	    case GLB_DB_INSERT1:
+	    	memcpy(&msgSendInf, p_msgSendInf, sizeof(msg_send_def));
+			ADJUST_STRING(msgSendInf.mchnt_cd    	)
+			ADJUST_STRING(msgSendInf.loc_trans_dt	)
+			ADJUST_STRING(msgSendInf.sys_tra_no		)
+			ADJUST_STRING(msgSendInf.phone    		)
+			ADJUST_STRING(msgSendInf.msg_txt		)
+			ADJUST_STRING(msgSendInf.send_time		)
+			memset(msg_id, ' ', sizeof(msg_id));
+			msg_id[sizeof(msg_id)-1] = 0;
+			memcpy(msg_id, p_msgSendInf->mchnt_cd, strlen(p_msgSendInf->mchnt_cd));
+			memcpy(msg_id+16, p_msgSendInf->phone, strlen(p_msgSendInf->phone));
+			EXEC SQL INSERT INTO MSG_SEND(MCHNT_CD, LOC_TRANS_DT, SYS_TRA_NO, MSG_ID, PHONE, MSG_TEXT, SEND_TIME) VALUES
+			(
+				:msgSendInf.mchnt_cd	,
+				:msgSendInf.loc_trans_dt,
+				:msgSendInf.sys_tra_no	,
+				:msg_id   				,
+				:msgSendInf.phone		,
+				:msgSendInf.msg_txt		,
+				:msgSendInf.send_time
+			);
+        	*p_sqlCode = sqlca.sqlcode;
+        	if (sqlca.sqlcode ==0)
+        	{
+        	
+        	}
+			if (  memcmp(sqlca.sqlerrm.sqlerrmc, "ORA-00001", 9 ) == 0  )
+			{
+	            *p_sqlCode = SQL_ERD_UNIKEY;
+	        	strcpy_safe(mchnt_cd, p_msgSendInf->mchnt_cd, sizeof(mchnt_cd)-1);
+	        	rtrim_null(mchnt_cd, ' ') ;
+	        	strcpy_safe(loc_trans_dt, p_msgSendInf->loc_trans_dt, sizeof(loc_trans_dt)-1);
+	        	rtrim_null(loc_trans_dt, ' ') ;
+	        	strcpy_safe(sys_tra_no, p_msgSendInf->sys_tra_no, sizeof(sys_tra_no)-1);
+	        	rtrim_null(sys_tra_no, ' ') ;
+	        	strcpy_safe(phone, p_msgSendInf->phone, sizeof(phone)-1);
+	        	rtrim_null(phone, ' ') ;
+	            EXEC SQL SELECT SEND_FLAG
+	            INTO :msgSendInf.send_flag
+	            FROM MSG_SEND
+				WHERE MCHNT_CD		=	:mchnt_cd
+					AND LOC_TRANS_DT=	:loc_trans_dt
+					AND	SYS_TRA_NO	=	:sys_tra_no
+					AND PHONE		=	:phone;
+				if(sqlca.sqlcode == 0)
+				{
+					memcpy(p_msgSendInf->send_flag, msgSendInf.send_flag, sizeof(msgSendInf.send_flag));
+				}
+				else
+				{
+					*p_sqlCode = sqlca.sqlcode;
+		            glb_Log(0,0,"<MSG_SEND.pc:MsgSendOpr:INSERT1-SELECT>Insert Record Failure. "
+		            			"(MCHNT_CD:%s,LOC_TRANS_DT:%s,SYS_TRA_NO:%s,PHONE:%s,MSG_TEXT:%s,SEND_TIME:%s) Error.\n"
+		            			"[sqlCode:%d]errmsg:\n----------\n%s\n", 
+		            			msgSendInf.mchnt_cd, msgSendInf.loc_trans_dt, msgSendInf.sys_tra_no, msgSendInf.phone, 
+		            			msgSendInf.msg_txt, msgSendInf.send_time, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc);
+					
+				}
+           	}
+			else if(sqlca.sqlcode != 0)
+	        {
+	            glb_Log(0,0,"<MSG_SEND.pc:MsgSendOpr:INSERT1>Insert Record Failure. "
+	            			"(MCHNT_CD:%s,LOC_TRANS_DT:%s,SYS_TRA_NO:%s,PHONE:%s,MSG_TEXT:%s,SEND_TIME:%s) Error.\n"
+	            			"[sqlCode:%d]errmsg:\n----------\n%s\n", 
+	            			msgSendInf.mchnt_cd, msgSendInf.loc_trans_dt, msgSendInf.sys_tra_no, msgSendInf.phone, 
+	            			msgSendInf.msg_txt, msgSendInf.send_time, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc);
+	        }
+	        EXEC SQL COMMIT WORK ;
+	        break;
+	    case GLB_DB_UPDATE1:
+	    	memcpy(&msgSendInf, p_msgSendInf, sizeof(msg_send_def));
+         	strcpy_safe(msg_id, p_msgSendInf->msg_id, sizeof(msg_id)-1);
+        	rtrim_null(msg_id, ' ') ;
+	       	strcpy_safe(phone, p_msgSendInf->phone, sizeof(phone)-1);
+        	rtrim_null(phone, ' ') ;
+			ADJUST_STRING(msgSendInf.rcv_time )
+			ADJUST_STRING(msgSendInf.send_flag)
+	        EXEC SQL UPDATE MSG_SEND 
+	        SET	RCV_TIME	=	:msgSendInf.rcv_time ,
+				SEND_FLAG	=	:msgSendInf.send_flag 
+			WHERE MSG_ID	=	:msg_id
+				AND PHONE	=	:phone;
+	        *p_sqlCode = sqlca.sqlcode;
+			if(sqlca.sqlcode != 0)
+	        {
+	            glb_Log(0,0,"<MSG_SEND.pc:MsgSendOpr:UPDATE1>UPDATE Record Failure. "
+	            			"(MSG_ID:%s,PHONE:%s,RCV_TIME:%s,SEND_FLAG:%s) Error.\n"
+	            			"[sqlCode:%d]errmsg:\n----------\n%s\n", 
+	            			msg_id, phone, msgSendInf.rcv_time, msgSendInf.send_flag,
+	            			sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc);
+	        }
+	        EXEC SQL COMMIT WORK ;
+	        break;    
+	    case GLB_DB_UPDATE2:
+	    	memcpy(&msgSendInf, p_msgSendInf, sizeof(msg_send_def));
+        	strcpy_safe(mchnt_cd, p_msgSendInf->mchnt_cd, sizeof(mchnt_cd)-1);
+        	rtrim_null(mchnt_cd, ' ') ;
+        	strcpy_safe(loc_trans_dt, p_msgSendInf->loc_trans_dt, sizeof(loc_trans_dt)-1);
+        	rtrim_null(loc_trans_dt, ' ') ;
+        	strcpy_safe(sys_tra_no, p_msgSendInf->sys_tra_no, sizeof(sys_tra_no)-1);
+        	rtrim_null(sys_tra_no, ' ') ;
+        	strcpy_safe(phone, p_msgSendInf->phone, sizeof(phone)-1);
+        	rtrim_null(phone, ' ') ;
+			ADJUST_STRING(msgSendInf.msg_id)
+			ADJUST_STRING(msgSendInf.send_flag)
+	        EXEC SQL UPDATE MSG_SEND 
+	        SET	MSG_ID		= 	:msgSendInf.msg_id,
+				SEND_FLAG	=	:msgSendInf.send_flag 
+			WHERE MCHNT_CD		=	:mchnt_cd
+				AND LOC_TRANS_DT=	:loc_trans_dt
+				AND	SYS_TRA_NO	=	:sys_tra_no
+				AND PHONE		=	:phone;
+	        *p_sqlCode = sqlca.sqlcode;
+			if(sqlca.sqlcode != 0)
+	        {
+	            glb_Log(0,0,"<MSG_SEND.pc:MsgSendOpr:UPDATE2>UPDATE Record Failure. "
+	            			"(MCHNT_CD:%s,LOC_TRANS_DT:%s,SYS_TRA_NO:%s,PHONE:%s,MSG_ID:%s,SEND_FLAG:%s) Error.\n"
+	            			"[sqlCode:%d]errmsg:\n----------\n%s\n", 
+	            			mchnt_cd, loc_trans_dt, sys_tra_no, phone, msgSendInf.msg_id, msgSendInf.send_flag, 
+	            			sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc);
+	        }
+	        EXEC SQL COMMIT WORK ;
+	        break;    
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+    return 0;
+}
+
+

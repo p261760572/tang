@@ -1,0 +1,108 @@
+#include <stdio.h>
+#include <errno.h>
+ #include <time.h>
+#include <string.h>
+#include <stdlib.h>
+#define  ROLLBACK	0
+#define  COMMIT		1
+
+struct  _varchar {
+  unsigned short len;
+  unsigned char  arr[1];
+};
+
+typedef struct _varchar VARCHAR;
+
+  EXEC SQL BEGIN DECLARE SECTION;
+       VARCHAR  vcaUserName[20];
+       VARCHAR  vcaPassWord[20];
+  EXEC SQL END   DECLARE SECTION;
+
+  EXEC SQL INCLUDE sqlca;
+EXEC ORACLE OPTION(RELEASE_CURSOR = YES);
+int
+DssConect()
+{
+ // char  caDbCryptFlag[3];
+  char  caDbPwd[30],*p;
+  
+  dcs_debug(0,0,"DssConect Entry");
+  p=getenv( "DBUSR" );
+  if( p ==  NULL )
+  {
+  	dcs_log(0,0,"getenv DBUSR fail!");
+  	return 0;
+  }
+  strcpy((char *)vcaUserName.arr,  p);
+  vcaUserName.len = strlen( (char *)vcaUserName.arr );
+
+ // sprintf( caDbCryptFlag, "%s", (char *)getenv( "DBPW_CRYPT" ));
+  p=getenv( "DBPWD" );
+  if( p ==  NULL )
+  {
+  	dcs_log(0,0,"getenv DBPWD fail!");
+  	return 0;
+  }
+  strcpy( caDbPwd, p);
+
+  memcpy( vcaPassWord.arr, caDbPwd, strlen( caDbPwd ));
+
+  vcaPassWord.len = strlen( (char *)caDbPwd );
+  dcs_debug(0,0,"begin execute sql");
+  EXEC SQL CONNECT :vcaUserName IDENTIFIED BY :vcaPassWord;
+
+  if ( sqlca.sqlcode == 0 )
+  {
+    
+    dcs_log( 0,0, "<DSS>Success to connect ORACLE as user:%s",vcaUserName.arr );
+
+    return 1;
+
+  } else 
+  {
+
+   
+    dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, "<DSS>Failure to connect ORACLE as user:%s",vcaUserName.arr  );
+
+    return 0;
+
+  }
+}
+
+int
+DssEnd( int iDssOperate )
+{
+
+  
+
+  switch ( iDssOperate) {
+    case ROLLBACK:
+  
+      EXEC SQL ROLLBACK WORK RELEASE;
+
+      return -1 ;
+
+    case COMMIT:
+
+      EXEC SQL COMMIT WORK RELEASE;
+      break;
+
+    default :
+    
+      dcs_log( 0,0, "<DSS>Invalid arguments: %d", iDssOperate );
+      return -1 ;
+  }
+
+  return 0 ;
+
+}
+
+int TransCommit()
+{
+ 		EXEC SQL COMMIT ;
+ 		if ( sqlca.sqlcode < 0 )
+ 		    return sqlca.sqlcode;
+ 		else
+ 			  return 1;
+}
+

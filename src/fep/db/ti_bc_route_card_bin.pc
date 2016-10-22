@@ -1,0 +1,123 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_route_card_bin.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_route_card_bin_def tiBcRouteCardBinList ;
+EXEC SQL END DECLARE SECTION;
+
+#define MIN(a,b) a>b?b:a
+
+/*
+ *  Function:  tiBcRouteCardBinListOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcTrans   - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcRouteCardBinOpr(int oprType, ti_bc_route_card_bin_def *p_tiBcRouteCardBinList, int *p_sqlCode)
+{
+	  int i;
+	  
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char card_bin      [ 21 + 1 ];
+    char rcv_ins_id_cd [ 8  + 1 ];
+    char card_attr     [ 2  + 1 ];
+    EXEC SQL END DECLARE SECTION;
+
+    memset(card_bin, 0, sizeof(card_bin) );
+    memset(rcv_ins_id_cd, 0, sizeof(rcv_ins_id_cd) );
+    memset(card_attr, 0, sizeof(card_attr) );
+    
+    switch ( oprType )
+    {
+    case GLB_DB_SELECT1:        
+        memcpy_safe(card_bin, p_tiBcRouteCardBinList->card_bin, sizeof(card_bin)-1);
+        rtrim_null(card_bin,' ');
+        
+        memcpy_safe(rcv_ins_id_cd, p_tiBcRouteCardBinList->rcv_ins_id_cd, sizeof(rcv_ins_id_cd)-1);
+        rtrim_null(rcv_ins_id_cd,' ');
+        
+        memcpy_safe(card_attr, p_tiBcRouteCardBinList->card_attr, sizeof(card_attr)-1);
+        rtrim_null(card_attr,' ');
+                	
+        EXEC SQL SELECT 
+        card_bin ,
+        rcv_ins_id_cd ,
+        card_attr ,     
+        iss_ins_id_cd ,     
+        enable_flag ,
+        get_inf_flag      
+        INTO
+          :tiBcRouteCardBinList.card_bin     ,
+          :tiBcRouteCardBinList.rcv_ins_id_cd,
+          :tiBcRouteCardBinList.card_attr    ,
+          :tiBcRouteCardBinList.iss_ins_id_cd,
+          :tiBcRouteCardBinList.enable_flag  ,
+          :tiBcRouteCardBinList.get_inf_flag
+        FROM (
+             SELECT 
+        				card_bin ,
+        				rcv_ins_id_cd ,
+        				card_attr ,     
+        				iss_ins_id_cd ,     
+        				enable_flag ,
+        				get_inf_flag
+             FROM ti_bc_route_card_bin
+             WHERE :card_bin like rtrim(card_bin)||'%'
+             	and (rcv_ins_id_cd=:rcv_ins_id_cd or rcv_ins_id_cd='*')
+             	and (card_attr=:card_attr or card_attr='*')
+             ORDER BY length(rtrim(card_bin)) desc, rcv_ins_id_cd desc, card_attr desc
+         )
+        WHERE rownum<=1
+        ORDER BY ROWNUM ASC
+        ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcRouteCardBinList, &tiBcRouteCardBinList, sizeof(ti_bc_route_card_bin_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0, "<FILE:%s,LINE:%d><TI_BC_ROUTE_CARD_BIN.pc.pc:tiBcRouteCardBinListOpr:SELECT1>Search Record (card_bin:[%s],rcv_ins_id_cd[%s]) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", __FILE__,__LINE__,card_bin, rcv_ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<FILE:%s,LINE:%d><TI_BC_ROUTE_CARD_BIN.pc.pc:tiBcRouteCardBinListOpr:SELECT1>Search Record (card_bin:[%s],rcv_ins_id_cd[%s]) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", __FILE__,__LINE__,card_bin, rcv_ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+
+

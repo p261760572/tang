@@ -1,0 +1,167 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_trans_det.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_trans_det_def tiBcTransDet ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tiBcTransDetOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcTrans   - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcTransDetOpr(int oprType, ti_bc_trans_det_def *p_tiBcTrans, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char  trans_chnl         [30+ 1] ; /* 接入渠道*/
+    char  msg_tp              [4 + 1] ;  
+    char  proc_cd             [6 + 1] ;  
+    char  pos_cond_cd     [2 + 1] ;  
+    char  mchnt_tp           [4 + 1] ;
+    char  msg_tp_new      [4 + 1] ;  
+    char  trans_flag          [4 + 1] ; 
+    char  rcv_ins_id_cd     [8 + 1] ; 
+    EXEC SQL END DECLARE SECTION;
+
+    memset(trans_chnl, 0, sizeof(trans_chnl));
+    memset(msg_tp, 0, sizeof(msg_tp));
+    memset(proc_cd, 0, sizeof(proc_cd));
+    memset(pos_cond_cd, 0, sizeof(pos_cond_cd));
+    memset(mchnt_tp, 0, sizeof(mchnt_tp));
+    memset(trans_flag, 0, sizeof(trans_flag));
+    memset(msg_tp_new, 0, sizeof(msg_tp_new));
+    memset(rcv_ins_id_cd, 0, sizeof(rcv_ins_id_cd));
+
+    char caTxnMsg[4096];
+    switch ( oprType )
+    {
+    
+    case GLB_DB_SELECT1:
+
+        memcpy_safe(trans_chnl, p_tiBcTrans->trans_chnl,sizeof(trans_chnl)-1);
+        rtrim_null(trans_chnl,' ');
+
+        memcpy_safe(msg_tp, p_tiBcTrans->msg_tp,sizeof(msg_tp)-1);
+        rtrim_null(msg_tp,' ');
+
+		memcpy_safe(proc_cd, p_tiBcTrans->proc_cd,sizeof(proc_cd)-1);
+        rtrim_null(proc_cd,' ');
+        
+        memcpy_safe(pos_cond_cd, p_tiBcTrans->pos_cond_cd,sizeof(pos_cond_cd)-1);
+        rtrim_null(pos_cond_cd,' ');
+        
+        memcpy_safe(mchnt_tp, p_tiBcTrans->mchnt_tp,sizeof(mchnt_tp)-1);
+        rtrim_null(mchnt_tp,' ');
+                
+        memcpy_safe(trans_flag, p_tiBcTrans->trans_flag,sizeof(trans_flag)-1);
+        rtrim_null(trans_flag,' ');
+        
+        memcpy_safe(msg_tp_new, p_tiBcTrans->msg_tp_new,sizeof(msg_tp_new)-1);
+        rtrim_null(msg_tp_new,' ');
+        
+        memcpy_safe(rcv_ins_id_cd, p_tiBcTrans->rcv_ins_id_cd,sizeof(rcv_ins_id_cd)-1);
+        rtrim_null(rcv_ins_id_cd,' ');
+
+        EXEC SQL SELECT 
+        trans_chnl      ,
+        msg_tp          ,
+        proc_cd         ,
+        pos_cond_cd     ,
+        mchnt_tp        ,
+        msg_tp_new      ,
+        trans_flag      ,
+        rcv_ins_id_cd   ,
+        procedure       ,
+        trans_flag_s    ,    
+        trans_flag_e    ,
+        trans_flag_o 
+        INTO :tiBcTransDet 
+        FROM (  SELECT 
+                trans_chnl      ,
+                msg_tp          ,
+                proc_cd         ,
+                pos_cond_cd     ,
+                mchnt_tp        ,
+                msg_tp_new      ,
+                trans_flag      ,                
+                rcv_ins_id_cd   ,
+                procedure       ,
+                trans_flag_s    ,    
+                trans_flag_e    ,
+                trans_flag_o    
+                FROM ti_bc_trans_det
+                WHERE ( rtrim(trans_chnl)=:trans_chnl OR rtrim(trans_chnl)='*' )
+                AND ( rtrim(msg_tp)=:msg_tp OR rtrim(msg_tp)='*' )
+                AND ( rtrim(proc_cd)=:proc_cd OR rtrim(proc_cd)='*' )
+                AND ( rtrim(pos_cond_cd)=:pos_cond_cd OR rtrim(pos_cond_cd)='*' )
+                AND ( rtrim(mchnt_tp)=:mchnt_tp OR rtrim(mchnt_tp)='*' )
+                AND ( rtrim(msg_tp_new)=:msg_tp_new OR rtrim(msg_tp_new)='*' )
+                AND ( rtrim(trans_flag)=:trans_flag OR rtrim(trans_flag)='*' )
+                AND ( rtrim(rcv_ins_id_cd)=:rcv_ins_id_cd OR rtrim(rcv_ins_id_cd)='*' )
+                ORDER BY  
+		msg_tp 		desc,
+                proc_cd         desc,
+                pos_cond_cd     desc,
+                mchnt_tp        desc,
+                msg_tp_new      desc,
+                trans_flag      desc,
+                rcv_ins_id_cd   desc
+             )
+        WHERE rownum<=1
+        ORDER BY ROWNUM ASC
+        ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcTrans, &tiBcTransDet, sizeof(ti_bc_trans_det_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            sprintf(caTxnMsg, "<TI_BC_TRANS_DET.pc:tiBcTransDetOpr:SELECT1>Search Record (trans_chnl:%s,msg_tp:%s,proc_cd:%s,pos_cond_cd:%s,mchnt_tp:%s,msg_tp_new:%s,trans_flag:%s,rcv_ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", trans_chnl,msg_tp,proc_cd,pos_cond_cd,mchnt_tp,msg_tp_new,trans_flag,rcv_ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        } else
+        {
+            sprintf(caTxnMsg, "<TI_BC_TRANS_DET.pc:tiBcTransDetOpr:SELECT1>Search Record (trans_chnl:%s,msg_tp:%s,proc_cd:%s,pos_cond_cd:%s,mchnt_tp:%s,msg_tp_new:%s,trans_flag:%s,rcv_ins_id_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", trans_chnl,msg_tp,proc_cd,pos_cond_cd,mchnt_tp,msg_tp_new,trans_flag,rcv_ins_id_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+
+

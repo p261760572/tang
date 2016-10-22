@@ -1,0 +1,36 @@
+#include <stdio.h>
+#include <errno.h>
+#include <time.h>
+
+EXEC SQL INCLUDE sqlca;
+void  test();
+
+void main()
+{
+char logfile[200];
+    if(u_fabricatefile("log/test.log",logfile,sizeof(logfile)) < 0)
+        return ;
+    dcs_log_open(logfile, "test");
+		DssConect();
+    test();
+
+}
+
+
+void  test()
+{
+
+  EXEC SQL BEGIN DECLARE SECTION;
+     double d;
+  EXEC SQL END DECLARE SECTION;
+
+  exec sql select  d  into :d from test where rownum=1;
+  if ( sqlca.sqlcode !=0)
+	{
+    	  	/*²ÎÊý´íÎó*/
+    	  	dcs_log( sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml, " sqlcode =%d ", sqlca.sqlcode);
+           return ;
+	}
+  
+  dcs_log(0,0,"d=%012.lf",d);
+}

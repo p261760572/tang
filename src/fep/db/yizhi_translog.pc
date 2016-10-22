@@ -1,0 +1,356 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/tl_bc_trans_log.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+char c_sql[4096];
+tl_bc_trans_log_def tlBcTransLog ;
+EXEC SQL END DECLARE SECTION;
+
+#define MIN(a,b) a>b?b:a
+
+/*
+ *  Function:  yizhi_translog_opr
+ *
+ *
+ *  Parameters:
+ * 
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int yizhi_translog_opr()
+{
+    char   *caString;
+    char   *caString1;
+    char   *caString2;
+    char   caStrBuf[4096];;
+    char   caTxnMsg[4096];
+    char   caStrInf[4096];
+    char   buff[4096];
+    char   info[20000];
+    char   info1[4096];
+    char   caItem[4096];
+    char   caPath[4096];
+    int    iRet,iOprListLen=0, iLen=0, iLength=0, ioffsetLength=0;
+    FILE   *fp;
+
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    EXEC SQL END DECLARE SECTION;
+
+    EXEC SQL DECLARE tl_bc_trans_log_cur CURSOR FOR
+        SELECT 
+        sys_dt_tm            ,
+        settle_dt            ,
+        trans_flag           ,
+        is_over              ,
+        lock_tm              ,
+        flag_lock            ,
+        flag_verifi          ,
+        flag_rcv             ,
+        flag_pay             ,
+        flag_reversal        ,
+        resp_cd_verifi       ,
+        resp_cd_rcv          ,
+        resp_cd_pay          ,
+        resp_cd_reversal     ,
+        trans_chnl           ,
+        packet_type          ,
+        line_nm_verifi       ,   
+        line_nm_rcv          ,
+        line_nm_pay          ,
+        reversal_id          ,
+        bc_settle_in         ,
+        fld32_ins_id_cd      ,
+        fwd_ins_id_cd        ,
+        rcv_ins_id_cd        ,
+        msg_tp               ,
+        pri_acct_no          ,
+        proc_cd              ,
+        trans_at             ,
+        transmsn_dt_tm       ,
+        sys_tra_no           ,
+        loc_trans_tm         ,
+        loc_trans_dt         ,
+        mchnt_tp             ,
+        pos_entry_md_cd      ,
+        pos_cond_cd          ,
+        retri_ref_no         ,
+        auth_id_resp_cd      ,
+        resp_cd              ,
+        term_id              ,
+        mchnt_cd             ,
+        area_cd              ,
+        trans_curr_cd        ,
+        flag_1               ,
+        flag_2               ,
+        flag_3               ,
+        flag_4               ,
+        flag_5               ,
+        fld_5                ,
+        fld_8                ,
+        fld_28               ,
+        fld_34               ,
+        fld_44               ,
+        fld_45               ,
+        fld_46               ,
+        fld_48               ,
+        fld_61               ,
+        center_sys_tra_no    ,
+        center_term_id       ,
+        center_mchnt_cd      ,
+        bill_id_rcv          
+           FROM tl_bc_trans_log;
+    if ( sqlca.sqlcode )
+    {
+        sprintf(caTxnMsg, "<yizhi_translog.pc:yizhi_translog_opr:SELECT1>declare tl_bc_trans_log_cur Record Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        printf( caTxnMsg);
+        return -1;
+    }
+
+    EXEC SQL OPEN tl_bc_trans_log_cur;
+    if ( sqlca.sqlcode )
+    {
+        sprintf(caTxnMsg, "<yizhi_translog.pc:yizhi_translog_opr:SELECT1>open tl_bc_trans_log_cur Record Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        printf( caTxnMsg);
+        return -2;
+    }
+
+    memset(caPath, 0, sizeof(caPath));
+    sprintf(caPath, "%s/translog.sql", getenv("HOME"));
+    if ((fp = fopen( caPath, "w+")) == NULL)
+    {
+        printf( " open fail \n");
+   	EXEC SQL CLOSE tl_bc_trans_log_cur ;
+        return -3;
+    }
+    while ( 1 )
+    {
+       	memset(&tlBcTransLog, 0, sizeof(tl_bc_trans_log_def));
+
+	EXEC SQL FETCH tl_bc_trans_log_cur into 
+           :tlBcTransLog.sys_dt_tm            ,
+           :tlBcTransLog.settle_dt            ,
+           :tlBcTransLog.trans_flag           ,
+           :tlBcTransLog.is_over              ,
+           :tlBcTransLog.lock_tm              ,
+           :tlBcTransLog.flag_lock            ,
+           :tlBcTransLog.flag_verifi          ,
+           :tlBcTransLog.flag_rcv             ,
+           :tlBcTransLog.flag_pay             ,
+           :tlBcTransLog.flag_reversal        ,
+           :tlBcTransLog.resp_cd_verifi       ,
+           :tlBcTransLog.resp_cd_rcv          ,
+           :tlBcTransLog.resp_cd_pay          ,
+           :tlBcTransLog.resp_cd_reversal     ,
+           :tlBcTransLog.trans_chnl           ,
+           :tlBcTransLog.packet_type          ,
+           :tlBcTransLog.line_nm_verifi       ,
+           :tlBcTransLog.line_nm_rcv          ,
+           :tlBcTransLog.line_nm_pay          ,
+           :tlBcTransLog.reversal_id          ,
+           :tlBcTransLog.bc_settle_in         ,
+           :tlBcTransLog.fld32_ins_id_cd      ,
+           :tlBcTransLog.fwd_ins_id_cd        ,
+           :tlBcTransLog.rcv_ins_id_cd        ,
+           :tlBcTransLog.msg_tp               ,
+           :tlBcTransLog.pri_acct_no          ,
+           :tlBcTransLog.proc_cd              ,
+           :tlBcTransLog.trans_at             ,
+           :tlBcTransLog.transmsn_dt_tm       ,
+           :tlBcTransLog.sys_tra_no           ,
+           :tlBcTransLog.loc_trans_tm         ,
+           :tlBcTransLog.loc_trans_dt         ,
+           :tlBcTransLog.mchnt_tp             ,
+           :tlBcTransLog.pos_entry_md_cd      ,
+           :tlBcTransLog.pos_cond_cd          ,
+           :tlBcTransLog.retri_ref_no         ,
+           :tlBcTransLog.auth_id_resp_cd      ,
+           :tlBcTransLog.resp_cd              ,
+           :tlBcTransLog.term_id              ,
+           :tlBcTransLog.mchnt_cd             ,
+           :tlBcTransLog.area_cd              ,
+           :tlBcTransLog.trans_curr_cd        ,
+           :tlBcTransLog.flag_1               ,
+           :tlBcTransLog.flag_2               ,
+           :tlBcTransLog.flag_3               ,
+           :tlBcTransLog.flag_4               ,
+           :tlBcTransLog.flag_5               ,
+           :tlBcTransLog.fld_5                ,
+           :tlBcTransLog.fld_8                ,
+           :tlBcTransLog.fld_28               ,
+           :tlBcTransLog.fld_34               ,
+           :tlBcTransLog.fld_44               ,
+           :tlBcTransLog.fld_45               ,
+           :tlBcTransLog.fld_46               ,
+           :tlBcTransLog.fld_48               ,
+           :tlBcTransLog.fld_61               ,
+           :tlBcTransLog.center_sys_tra_no    ,
+           :tlBcTransLog.center_term_id       ,
+           :tlBcTransLog.center_mchnt_cd      ,
+           :tlBcTransLog.bill_id_rcv;
+       	if ( sqlca.sqlcode )
+	if(sqlca.sqlcode  == 1403)
+       		break;
+	if(sqlca.sqlcode )
+	{
+        	sprintf(caTxnMsg, "<yizhi_translog.pc:yizhi_translog_opr:SELECT1>fetch tl_bc_trans_log Record Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        	printf( caTxnMsg);
+    		fclose(fp);
+		EXEC SQL CLOSE tl_bc_trans_log_cur ;
+		return -3;
+	}
+
+        ADJUST_STRING(tlBcTransLog.sys_dt_tm         )
+        ADJUST_STRING(tlBcTransLog.settle_dt         )
+        ADJUST_STRING(tlBcTransLog.trans_flag        )
+        ADJUST_STRING(tlBcTransLog.is_over           )
+        ADJUST_STRING(tlBcTransLog.lock_tm           )
+        ADJUST_STRING(tlBcTransLog.flag_lock         )
+        ADJUST_STRING(tlBcTransLog.flag_verifi       )
+        ADJUST_STRING(tlBcTransLog.flag_rcv          )
+        ADJUST_STRING(tlBcTransLog.flag_pay          )
+        ADJUST_STRING(tlBcTransLog.flag_reversal     )
+        ADJUST_STRING(tlBcTransLog.resp_cd_verifi    )
+        ADJUST_STRING(tlBcTransLog.resp_cd_rcv       )
+        ADJUST_STRING(tlBcTransLog.resp_cd_pay       )
+        ADJUST_STRING(tlBcTransLog.resp_cd_reversal  )
+        ADJUST_STRING(tlBcTransLog.trans_chnl        )
+        ADJUST_STRING(tlBcTransLog.packet_type       )
+        ADJUST_STRING(tlBcTransLog.line_nm_verifi    )
+        ADJUST_STRING(tlBcTransLog.line_nm_rcv       )
+        ADJUST_STRING(tlBcTransLog.line_nm_pay       )
+        ADJUST_STRING(tlBcTransLog.reversal_id       )
+        ADJUST_STRING(tlBcTransLog.bc_settle_in      )
+        ADJUST_STRING(tlBcTransLog.fld32_ins_id_cd   )
+        ADJUST_STRING(tlBcTransLog.fwd_ins_id_cd     )
+        ADJUST_STRING(tlBcTransLog.rcv_ins_id_cd     )
+        ADJUST_STRING(tlBcTransLog.msg_tp            )
+        ADJUST_STRING(tlBcTransLog.pri_acct_no       )
+        ADJUST_STRING(tlBcTransLog.proc_cd           )
+        glb_Adjust_Decimal(tlBcTransLog.trans_at, tlBcTransLog.trans_at, 12);
+        ADJUST_STRING(tlBcTransLog.transmsn_dt_tm    )
+        ADJUST_STRING(tlBcTransLog.sys_tra_no        )
+        ADJUST_STRING(tlBcTransLog.loc_trans_tm      )
+        ADJUST_STRING(tlBcTransLog.loc_trans_dt      )
+        ADJUST_STRING(tlBcTransLog.mchnt_tp          )
+        ADJUST_STRING(tlBcTransLog.pos_entry_md_cd   )
+        ADJUST_STRING(tlBcTransLog.pos_cond_cd       )
+        ADJUST_STRING(tlBcTransLog.retri_ref_no      )
+        ADJUST_STRING(tlBcTransLog.auth_id_resp_cd   )
+        ADJUST_STRING(tlBcTransLog.resp_cd           )
+        ADJUST_STRING(tlBcTransLog.term_id           )
+        ADJUST_STRING(tlBcTransLog.mchnt_cd          )
+        ADJUST_STRING(tlBcTransLog.area_cd           )
+        ADJUST_STRING(tlBcTransLog.trans_curr_cd     )
+        ADJUST_STRING(tlBcTransLog.flag_1            )
+        ADJUST_STRING(tlBcTransLog.flag_2            )
+        ADJUST_STRING(tlBcTransLog.flag_3            )
+        ADJUST_STRING(tlBcTransLog.flag_4            )
+        ADJUST_STRING(tlBcTransLog.flag_5            )
+        ADJUST_STRING(tlBcTransLog.fld_5             )
+        ADJUST_STRING(tlBcTransLog.fld_8             )
+        ADJUST_STRING(tlBcTransLog.fld_28            )
+        ADJUST_STRING(tlBcTransLog.fld_34            )
+        ADJUST_STRING(tlBcTransLog.fld_44            )
+        ADJUST_STRING(tlBcTransLog.fld_45            )
+        ADJUST_STRING(tlBcTransLog.fld_46            )
+        ADJUST_STRING(tlBcTransLog.fld_48            )
+        ADJUST_STRING(tlBcTransLog.fld_61            )
+        ADJUST_STRING(tlBcTransLog.center_sys_tra_no )
+        ADJUST_STRING(tlBcTransLog.center_term_id    )
+        ADJUST_STRING(tlBcTransLog.center_mchnt_cd   )
+        ADJUST_STRING(tlBcTransLog.bill_id_rcv       )
+
+	memset(info, 0, sizeof(info));
+	strcpy(info, "insert into tl_bc_trans_log (sys_dt_tm,settle_dt,trans_flag,is_over,lock_tm,flag_lock,flag_verifi,flag_rcv,flag_pay,flag_reversal,resp_cd_verifi,resp_cd_rcv,resp_cd_pay,resp_cd_reversal,trans_chnl,packet_type,line_nm_verifi,line_nm_rcv,line_nm_pay,reversal_id,bc_settle_in,fld32_ins_id_cd,fwd_ins_id_cd,rcv_ins_id_cd,msg_tp,pri_acct_no,proc_cd,trans_at,transmsn_dt_tm,sys_tra_no,loc_trans_tm,loc_trans_dt,mchnt_tp,pos_entry_md_cd,pos_cond_cd,retri_ref_no,auth_id_resp_cd,resp_cd,term_id,mchnt_cd,area_cd,trans_curr_cd,flag_1,flag_2,flag_3,flag_4,flag_5,flag_6,flag_7,fld_5,fld_8,fld_28,fld_34,fld_44,fld_45,fld_46,fld_48,fld_61,center_sys_tra_no,center_term_id,center_mchnt_cd,bill_id_rcv,card_attr,iss_ins_id_cd,pname,encrypt_info,id_type,orig_data_elemts) values(");
+	sprintf(info+strlen(info), "'%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s');\n",
+           tlBcTransLog.sys_dt_tm            ,
+           tlBcTransLog.settle_dt            ,
+           tlBcTransLog.trans_flag           ,
+           tlBcTransLog.is_over              ,
+           tlBcTransLog.lock_tm              ,
+           tlBcTransLog.flag_lock            ,
+           tlBcTransLog.flag_verifi          ,
+           tlBcTransLog.flag_rcv             ,
+           tlBcTransLog.flag_pay             ,
+           tlBcTransLog.flag_reversal        ,
+           tlBcTransLog.resp_cd_verifi       ,
+           tlBcTransLog.resp_cd_rcv          ,
+           tlBcTransLog.resp_cd_pay          ,
+           tlBcTransLog.resp_cd_reversal     ,
+           tlBcTransLog.trans_chnl           ,
+           tlBcTransLog.packet_type          ,
+           tlBcTransLog.line_nm_verifi       ,
+           tlBcTransLog.line_nm_rcv          ,
+           tlBcTransLog.line_nm_pay          ,
+           tlBcTransLog.reversal_id          ,
+           tlBcTransLog.bc_settle_in         ,
+           tlBcTransLog.fld32_ins_id_cd      ,
+           tlBcTransLog.fwd_ins_id_cd        ,
+           tlBcTransLog.rcv_ins_id_cd        ,
+           tlBcTransLog.msg_tp               ,
+           tlBcTransLog.pri_acct_no          ,
+           tlBcTransLog.proc_cd              ,
+           tlBcTransLog.trans_at             ,
+           tlBcTransLog.transmsn_dt_tm       ,
+           tlBcTransLog.sys_tra_no           ,
+           tlBcTransLog.loc_trans_tm         ,
+           tlBcTransLog.loc_trans_dt         ,
+           tlBcTransLog.mchnt_tp             ,
+           tlBcTransLog.pos_entry_md_cd      ,
+           tlBcTransLog.pos_cond_cd          ,
+           tlBcTransLog.retri_ref_no         ,
+           tlBcTransLog.auth_id_resp_cd      ,
+           tlBcTransLog.resp_cd              ,
+           tlBcTransLog.term_id              ,
+           tlBcTransLog.mchnt_cd             ,
+           tlBcTransLog.area_cd              ,
+           tlBcTransLog.trans_curr_cd        ,
+           tlBcTransLog.flag_1               ,
+           tlBcTransLog.flag_2               ,
+           tlBcTransLog.flag_3               ,
+           tlBcTransLog.flag_4               ,
+           tlBcTransLog.flag_5               ,
+           "1"  	            ,
+           "0"            ,
+           tlBcTransLog.fld_5                ,
+           tlBcTransLog.fld_8                ,
+           tlBcTransLog.fld_28               ,
+           tlBcTransLog.fld_34               ,
+           tlBcTransLog.fld_44               ,
+           tlBcTransLog.fld_45               ,
+           tlBcTransLog.fld_46               ,
+           "yizhi"               ,
+           tlBcTransLog.fld_61               ,
+           tlBcTransLog.center_sys_tra_no    ,
+           tlBcTransLog.center_term_id       ,
+           tlBcTransLog.center_mchnt_cd      ,
+           tlBcTransLog.bill_id_rcv,
+	   " ",
+	   " ",
+	   " ",
+	   " ",
+	   " ",
+	   " ");
+   	  fwrite( info, 1, strlen(info), fp );
+    }
+    fclose(fp);
+    EXEC SQL CLOSE tl_bc_trans_log_cur ;
+
+    return 0;
+}
+
+

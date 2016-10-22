@@ -1,0 +1,98 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/tl_bc_exp_log.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+EXEC SQL BEGIN DECLARE SECTION;
+tl_bc_exp_log_def tlBcExpLog ;
+EXEC SQL END DECLARE SECTION;
+
+
+
+/*
+ *  Function:  tlBcExpLogOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode        - 返回值， 输出
+ *      p_tlBcTransLog   - 查找条件，输入
+ *                         查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tlBcExpLogOpr(int oprType, tl_bc_exp_log_def *p_tlBcExplLog, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    EXEC SQL END DECLARE SECTION;
+
+    int i;
+    char caTxnMsg[2048];
+
+    switch ( oprType )
+    {
+
+    case GLB_DB_INSERT1:
+    
+
+        /*copy buff*/
+        memcpy(&tlBcExpLog, p_tlBcExplLog, sizeof(tl_bc_exp_log_def));
+
+        /*rtrim(tlBcExpLog.sys_date);
+        rtrim(tlBcExpLog.sys_time);*/
+        ADJUST_STRING(tlBcExpLog.rsn_code       )
+        ADJUST_STRING(tlBcExpLog.rsn_desc       )
+
+        EXEC SQL INSERT INTO tl_bc_exp_log(sys_date,sys_time,rsn_code,rsn_desc,data) values
+        (to_char(sysdate,'YYYYMMDD'),
+         to_char(sysdate,'HH24MMSS'),
+         :tlBcExpLog.rsn_code,
+         :tlBcExpLog.rsn_desc,
+         :tlBcExpLog.data
+        )
+        ;
+        
+        /* insert result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+
+        } else if ( memcmp(sqlca.sqlerrm.sqlerrmc, "ORA-00001", 9 ) == 0 )
+        {
+            *p_sqlCode = SQL_ERD_UNIKEY;
+            sprintf(caTxnMsg, "<TL_BC_EXP_LOG.pc:tlBcExpLogOpr:INSERT1>Insert Record is exist.(sys_date:%s,sys_time:%s,rsn_code:%s,rsn_desc:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", tlBcExpLog.sys_date,tlBcExpLog.sys_time,tlBcExpLog.rsn_code,tlBcExpLog.rsn_desc, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 100, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        } else
+        {
+            sprintf(caTxnMsg, "<TL_BC_EXP_LOG.pc:tlBcExpLogOpr:INSERT1>Insert Record is exist.(sys_date:%s,sys_time:%s,rsn_code:%s,rsn_desc:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", tlBcExpLog.sys_date,tlBcExpLog.sys_time,tlBcExpLog.rsn_code,tlBcExpLog.rsn_desc, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 100, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+
+

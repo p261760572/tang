@@ -1,0 +1,214 @@
+#define SQLCA_STORAGE_CLASS extern 
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include <stdarg.h>
+#include <time.h>
+#include "./inc/glbdb.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+#define UNAME_LEN      20 
+#define PWD_LEN        11 
+#define SQLNOTFOUND  1403
+
+typedef char asciiz[PWD_LEN]; 
+
+EXEC SQL TYPE asciiz IS CHARZ(PWD_LEN) REFERENCE; 
+asciiz     username; 
+asciiz     password; 
+
+void sql_error(msg) 
+    char *msg;
+{ 
+    char err_msg[512],buff[1024];
+    size_t buf_len, msg_len;
+
+    EXEC SQL WHENEVER SQLERROR CONTINUE;
+
+    printf("\n%s\n", msg);
+
+/* Call sqlglm() to get the complete text of the
+ * error message.
+ */
+    buf_len = sizeof (err_msg);
+    sqlglm(err_msg, &buf_len, &msg_len);
+    printf("%.*s\n", msg_len, err_msg);
+    
+    sprintf(buff, "<sql_error>%.*s\n", msg_len, err_msg);
+    /*glb_ErrLog( 1000, buff, RPT_TO_LOG, 0, 0 );*/
+
+    EXEC SQL ROLLBACK RELEASE;
+    exit(EXIT_FAILURE);
+} 
+
+int glbdb_connect()
+{
+  strcpy(username, "test");
+  strcpy(password, "test");
+ 
+  EXEC SQL WHENEVER SQLERROR DO sql_error("ORACLE error--");
+  EXEC SQL CONNECT :username IDENTIFIED BY :password; 
+  printf("\nConnected to ORACLE as user: %s\n", username);
+  
+  return 0;  
+}
+
+int glbdb_disconnect()
+{
+	return 0;
+}
+                                                                     
+struct tm *GetLocalTimeStruct()                                      
+{                                                                    
+	time_t time_cl ;                                                   
+	time(&time_cl) ;                                                   
+	return localtime( &time_cl );                                      
+}                                                                    
+                                                                     
+char* glb_GetLocalTimeString(char *buf,int bufsize,const char *format)
+{                                                                    
+	struct tm *time_tm;                                                
+	time_tm=GetLocalTimeStruct();                                      
+	if( strftime(buf,bufsize,format,time_tm) != 0 )                    
+		return buf;                                                      
+	else                                                               
+		return 0;                                                        
+}            
+
+int glb_ErrLog_Default(int iErrCode, char *pcaDispMsg,char cDumpDev,char *pcaDumpAddr,long lDumpLen)
+{
+	printf("<glbdb.pc:glb_ErrLog>ErrCode:[%d],%s\n", iErrCode, pcaDispMsg);
+}
+
+//typedef int (*PFUNC_LOG)(int, char *,char,char*,long);
+typedef int (*PFUNC_LOG)( char *, int size, char* );
+PFUNC_LOG PFunc_ErrLog = (PFUNC_LOG) &glb_ErrLog_Default;
+PFUNC_LOG PFunc_Debug = (PFUNC_LOG) &glb_ErrLog_Default;
+
+int glb_Log(char *binary, int size, char *buff, ...)
+{
+	char temp[1024*8];
+  va_list ap;
+  va_start(ap, buff);
+  vsnprintf(temp, sizeof(temp), buff, ap);
+  va_end(ap);
+  if ( PFunc_ErrLog ){
+     PFunc_ErrLog( binary, size, temp);
+  }
+}
+
+int glb_Debug(char *binary, int size, char *buff, ...)
+{
+	char temp[1024*8];
+  va_list ap;
+  va_start(ap, buff);
+  vsnprintf(temp, sizeof(temp), buff, ap);
+  va_end(ap);
+  if ( PFunc_ErrLog ){
+     PFunc_Debug( binary, size, temp);
+  }
+}
+
+int glb_ErrLog(int iErrCode, char *pcaDispMsg,char cDumpDev,char *pcaDumpAddr,long lDumpLen)
+{
+	if( iErrCode >= 1000 ){
+		glb_Debug(pcaDumpAddr,lDumpLen,pcaDispMsg);
+	}else{
+		glb_Log(pcaDumpAddr,lDumpLen,pcaDispMsg);
+	}
+}
+
+int glb_SetLog_FuncPtr(int addr)
+{
+	if( addr == (int)PFunc_ErrLog )return 0;
+	if( addr == 0 ) PFunc_ErrLog = (PFUNC_LOG) &glb_ErrLog_Default;
+		else PFunc_ErrLog = (PFUNC_LOG) addr;
+	return 0;
+}
+
+int glb_SetDebug_FuncPtr(int addr)
+{
+	if( addr == (int)PFunc_Debug )return 0;
+	if( addr == 0 ) PFunc_Debug = (PFUNC_LOG) &glb_ErrLog_Default;
+		else PFunc_Debug = (PFUNC_LOG) addr;
+	return 0;
+}
+
+char* rtrim(char* str)
+{    
+    char *p=str+strlen(str)-1;
+    while( p >= str && isspace(*p) ) p--;
+    *(p+1)=0;
+    return str;
+}
+
+char* rtrim_null(char* str, char nullchar)
+{
+	char *p=str+strlen(str)-1;
+    while( p >= str && isspace(*p) ) p--;
+    if(p==str-1){
+    	*++p=nullchar;
+    }
+    *(p+1)='\0';    
+    return str;
+}
+
+int glb_Adjust_Decimal(char *output, char *decimal, int len)
+{
+    char format[10], buff[50],caMsg[1024],caTmp[100];
+    int i,slen;
+    strcpy(buff, decimal);
+    rtrim(buff);
+    memset(output,'0',len);
+    output[len]=0;
+    slen=strlen(buff);
+    for(i=slen; i>=0&&(buff[i]<0x30||buff[i]>0x39); i--);
+    for(; i>=0&&((buff[i]>=0x30&&buff[i]<=0x39)||buff[i]=='.')&&len>0; i--)
+    {
+       if(buff[i]!='.') output[--len] = buff[i];
+    }
+    return 0;
+}
+
+int glb_min_strlen(char *src, int len)
+{
+    int l=0;
+    while ( (l<len) && *(src+l)!=0 ) l++;
+    return l;
+}
+
+
+int glb_mktime(time_t *time, char *ymd)
+{
+	int i;
+	char buff[8];
+  struct tm t;
+  
+  strcpy_safe(buff, ymd, 4);
+  t.tm_year  =   atoi(buff);
+  
+  strcpy_safe(buff, ymd+4, 2);
+  t.tm_mon   =   atoi(buff);   
+  
+  strcpy_safe(buff, ymd+6, 2);
+  t.tm_mday   =   atoi(buff);
+  
+  strcpy_safe(buff, ymd+8, 2);
+  t.tm_hour   =   atoi(buff);
+  
+  strcpy_safe(buff, ymd+10, 2);
+  t.tm_min   =   atoi(buff);
+  
+  strcpy_safe(buff, ymd+12, 2);
+  t.tm_sec   =   atoi(buff);
+  
+  *time   =   mktime(   &t   );   
+  
+  return 0;
+}
+

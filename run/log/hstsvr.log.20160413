@@ -1,0 +1,33 @@
+2016/04/13 05:26:11         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/13 05:26:11         (003658) 
+<HstSvrExit>  died process pid=[3748],exit code=[0]
+
+2016/04/13 05:26:11         (003658) 
+<HstSrv> comm process for [kkkk 001] died,try reload it...
+
+2016/04/13 05:26:11         (003658) 
+start process low=0,upper=0
+
+2016/04/13 05:26:11         (003658) 
+<HstSrv> catch a signal 17 !
+
+2016/04/13 05:26:11         (003658) 
+<HstSvrExit>  died process pid=[3752],exit code=[3840]
+
+2016/04/13 05:26:11         (003658) 
+<HstSrv> comm process for [kkkk 002] died,try reload it...
+
+2016/04/13 05:26:11         (003658) 
+start process low=1,upper=1
+
+2016/04/13 05:26:11         (003658) 
+<HstSrv> catch a signal 15 !
+
+2016/04/13 05:26:11         (005583) 
+execute dcxhstcp kkkk 001
+
+2016/04/13 05:26:11         (005584) 
+execute dcxhstcp kkkk 002
+

@@ -1,0 +1,34 @@
+curDir=`pwd`
+
+#clear obsolete
+rm -f $FEP_SRCPATH/lib/*  2>/dev/null
+rm -f $FEP_RUNPATH/bin/*  2>/dev/null
+
+#compile folder
+$FEP_SRCPATH/folder/make/make_all
+
+#compile iso8583
+cd $FEP_SRCPATH/fep/iso8583
+make obj
+
+#compile dcs
+cd $FEP_SRCPATH/fep/dcs
+make obj
+
+cd $FEP_SRCPATH/fep/timer
+make obj
+
+cd $FEP_SRCPATH/fep/dcs
+make exe
+
+cd $FEP_SRCPATH/fep/timer
+make exe
+
+cd $FEP_SRCPATH/fep/poscom
+make all
+
+cd $FEP_SRCPATH/fep/appl
+make all
+
+#restore
+cd $curDir

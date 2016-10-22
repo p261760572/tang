@@ -1,0 +1,224 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_app_fork_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_app_fork_inf_def tiBcAppForkInf ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tiBcAppForkInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode        - 返回值， 输出
+ *      p_tiCardBin      - 查找条件，输入
+ *                         查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+//int tiBcCardBinOpr(int oprType, ti_bc_card_bin_def *p_tiCardBin, int *p_sqlCode)
+int tiBcAppForkInfOpr(int oprType, ti_bc_app_fork_inf_def *p_tiBcAppForkInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    int app_id;
+    int fork_num;
+    EXEC SQL END DECLARE SECTION;
+    
+    switch ( oprType )
+    {
+    case GLB_DB_SELECT1:
+
+        app_id = p_tiBcAppForkInf->app_id;
+
+        EXEC SQL SELECT 
+        app_id  ,
+        app_name,
+        fork_num,
+        max_fork_num
+        INTO :tiBcAppForkInf
+        FROM ti_bc_app_fork_inf        
+        WHERE app_id=:app_id
+                     ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcAppForkInf, &tiBcAppForkInf, sizeof(ti_bc_app_fork_inf_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0, "<TI_BC_APP_FORK_INF.pc:tiBcAppForkInfOpr:SELECT1>Search Record (APP_ID:%d) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", app_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0, "<TI_BC_APP_FORK_INF.pc:tiBcAppForkInfOpr:SELECT1>Search Record (APP_ID:%d) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", app_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );            
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+
+    case GLB_DB_UPDATE2:
+
+        app_id = p_tiBcAppForkInf->app_id;
+
+        EXEC SQL SELECT 
+        app_id  ,
+        app_name,
+        fork_num,
+        max_fork_num
+        INTO :tiBcAppForkInf
+        FROM ti_bc_app_fork_inf
+        WHERE app_id=:app_id
+                     FOR update
+                     ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            fork_num = tiBcAppForkInf.fork_num;
+            if ( fork_num>= tiBcAppForkInf.max_fork_num )
+            {
+                EXEC SQL COMMIT WORK ;
+                memcpy(p_tiBcAppForkInf, &tiBcAppForkInf, sizeof(ti_bc_app_fork_inf_def));
+                *p_sqlCode = SQL_ERD_OUT_FORK_NUM;
+                return 0;
+            }
+            ++ fork_num;
+            EXEC SQL UPDATE ti_bc_app_fork_inf
+            SET fork_num=:fork_num
+                         WHERE app_id=:app_id;            
+
+            *p_sqlCode = sqlca.sqlcode;
+            if ( sqlca.sqlcode == 0 )
+            {
+                memcpy(p_tiBcAppForkInf, &tiBcAppForkInf, sizeof(ti_bc_app_fork_inf_def));
+                p_tiBcAppForkInf->fork_num = fork_num;
+                EXEC SQL COMMIT WORK ;
+                return 0;
+            } else
+            {
+                glb_Log(0,0,"<TI_BC_APP_FORK_INF.pc:tiBcAppForkInfOpr:SELECT2>Search Record (APP_ID:%d) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", app_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+                EXEC SQL COMMIT WORK ;
+                return -1;
+            }
+
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            tiBcAppForkInf.app_id = app_id ;
+            strcpy(tiBcAppForkInf.app_name, " ");
+            tiBcAppForkInf.fork_num = 1;
+            tiBcAppForkInf.max_fork_num = 100;
+
+            EXEC SQL INSERT INTO ti_bc_app_fork_inf(app_id,app_name,fork_num,max_fork_num)values(:tiBcAppForkInf.app_id,:tiBcAppForkInf.app_name,:tiBcAppForkInf.fork_num,:tiBcAppForkInf.max_fork_num);
+
+            *p_sqlCode = sqlca.sqlcode;
+            if ( sqlca.sqlcode == 0 )
+            {
+                memcpy(p_tiBcAppForkInf, &tiBcAppForkInf, sizeof(ti_bc_app_fork_inf_def));
+                EXEC SQL COMMIT WORK ;
+                return 0;
+            } else
+            {
+                glb_Log(0,0, "<TI_BC_APP_FORK_INF.pc:tiBcAppForkInfOpr:SELECT2>Search Record (APP_ID:%d) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", app_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+                EXEC SQL COMMIT WORK ;
+                return -1;
+            }
+        } else
+        {
+            glb_Log(0,0, "<TI_BC_APP_FORK_INF.pc:tiBcAppForkInfOpr:SELECT2>Search Record (APP_ID:%d) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", app_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            EXEC SQL COMMIT WORK ;
+            return -1;
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    case GLB_DB_UPDATE3:
+
+        app_id = p_tiBcAppForkInf->app_id;
+
+        EXEC SQL SELECT 
+        app_id  ,
+        app_name,
+        fork_num,
+        max_fork_num
+        INTO :tiBcAppForkInf
+        FROM ti_bc_app_fork_inf        
+        WHERE app_id=:app_id
+                     FOR update
+                     ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            fork_num = tiBcAppForkInf.fork_num;
+            if ( fork_num>= tiBcAppForkInf.max_fork_num )
+            {
+                EXEC SQL COMMIT WORK ;
+                memcpy(p_tiBcAppForkInf, &tiBcAppForkInf, sizeof(ti_bc_app_fork_inf_def));
+                *p_sqlCode = SQL_ERD_OUT_FORK_NUM;
+                return 0;
+            }
+            if ( fork_num>0 ) --fork_num ;
+
+            EXEC SQL UPDATE ti_bc_app_fork_inf
+            SET fork_num=:fork_num
+                         WHERE app_id=:app_id;            
+
+            *p_sqlCode = sqlca.sqlcode;
+            if ( sqlca.sqlcode == 0 )
+            {
+                memcpy(p_tiBcAppForkInf, &tiBcAppForkInf, sizeof(ti_bc_app_fork_inf_def));
+                p_tiBcAppForkInf->fork_num = fork_num;
+                EXEC SQL COMMIT WORK ;
+                return 0;
+            } else
+            {
+                glb_Log(0,0, "<TI_BC_APP_FORK_INF.pc:tiBcAppForkInfOpr:UPDATE3>Search Record (APP_ID:%d) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", app_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+                EXEC SQL COMMIT WORK ;
+                return -1;
+            }
+
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0, "<TI_BC_APP_FORK_INF.pc:tiBcAppForkInfOpr:UPDATE3>Search Record (APP_ID:%d) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", app_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0, "<TI_BC_APP_FORK_INF.pc:tiBcAppForkInfOpr:UPDATE3>Search Record (APP_ID:%d) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", app_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+

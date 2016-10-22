@@ -1,0 +1,10 @@
+FLDHOME=$(ICS_SRCPATH)/folder
+
+FLDSRC=$(FLDHOME)/src
+FLDBIN=$(ICS_HOME)/bin
+FLDLIB=$(ICS_SRCPATH)/lib/libfold.a
+
+CFLAGS= -I $(FLDHOME)/inc
+ARFLAGS=rv
+
+

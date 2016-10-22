@@ -1,0 +1,684 @@
+2016/04/12 22:16:50 kkkk002(003660) 
+accept socket succ sock=[1]
+
+2016/04/12 22:16:50 kkkk002(003660) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61062!
+
+2016/04/12 22:16:50 kkkk002(003660) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:16:50 kkkk002(003660) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:16:50 kkkk002(003660) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:16:50]]
+
+2016/04/12 22:16:50 kkkk002(003660) 
+check_flag =1
+
+2016/04/12 22:16:56 kkkk002(003660) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:16:56 kkkk002(003660) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:16:56 kkkk002(003660) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:16:56 kkkk002(003660) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:16:56 kkkk002(003660) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:16:56]]
+
+2016/04/12 22:16:56 kkkk002(003660) 
+notify end
+
+2016/04/12 22:16:56 kkkk002(003660) 
+exit system signo =15
+
+2016/04/12 22:16:56 kkkk002(003695) 
+connect folder system
+
+2016/04/12 22:16:56 kkkk002(003695) 
+locate folder id
+
+2016/04/12 22:16:56 kkkk002(003695) 
+locate link msg
+
+2016/04/12 22:16:56 kkkk002(003695) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:16:56 kkkk002(003695) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:16:56 kkkk002(003695) 
+ open socket succ
+
+2016/04/12 22:17:02 kkkk002(003695) 
+accept socket succ sock=[1]
+
+2016/04/12 22:17:02 kkkk002(003695) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61079!
+
+2016/04/12 22:17:02 kkkk002(003695) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:17:02 kkkk002(003695) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:02 kkkk002(003695) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:17:02]]
+
+2016/04/12 22:17:02 kkkk002(003695) 
+check_flag =1
+
+2016/04/12 22:17:08 kkkk002(003695) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:17:08 kkkk002(003695) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:17:08 kkkk002(003695) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:17:08 kkkk002(003695) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:08 kkkk002(003695) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:17:08]]
+
+2016/04/12 22:17:08 kkkk002(003695) 
+notify end
+
+2016/04/12 22:17:08 kkkk002(003695) 
+exit system signo =15
+
+2016/04/12 22:17:08 kkkk002(003700) 
+connect folder system
+
+2016/04/12 22:17:08 kkkk002(003700) 
+locate folder id
+
+2016/04/12 22:17:08 kkkk002(003700) 
+locate link msg
+
+2016/04/12 22:17:08 kkkk002(003700) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:17:08 kkkk002(003700) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:17:08 kkkk002(003700) 
+ open socket succ
+
+2016/04/12 22:17:14 kkkk002(003700) 
+accept socket succ sock=[1]
+
+2016/04/12 22:17:14 kkkk002(003700) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61096!
+
+2016/04/12 22:17:14 kkkk002(003700) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:17:14 kkkk002(003700) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:14 kkkk002(003700) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:17:14]]
+
+2016/04/12 22:17:14 kkkk002(003700) 
+check_flag =1
+
+2016/04/12 22:17:19 kkkk002(003700) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:17:19 kkkk002(003700) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:17:19 kkkk002(003700) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:17:19 kkkk002(003700) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:19 kkkk002(003700) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:17:19]]
+
+2016/04/12 22:17:19 kkkk002(003700) 
+notify end
+
+2016/04/12 22:17:19 kkkk002(003700) 
+exit system signo =15
+
+2016/04/12 22:17:19 kkkk002(003705) 
+connect folder system
+
+2016/04/12 22:17:19 kkkk002(003705) 
+locate folder id
+
+2016/04/12 22:17:19 kkkk002(003705) 
+locate link msg
+
+2016/04/12 22:17:19 kkkk002(003705) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:17:19 kkkk002(003705) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:17:19 kkkk002(003705) 
+ open socket succ
+
+2016/04/12 22:17:24 kkkk002(003705) 
+accept socket succ sock=[1]
+
+2016/04/12 22:17:24 kkkk002(003705) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61110!
+
+2016/04/12 22:17:24 kkkk002(003705) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:17:24 kkkk002(003705) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:24 kkkk002(003705) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:17:24]]
+
+2016/04/12 22:17:24 kkkk002(003705) 
+check_flag =1
+
+2016/04/12 22:17:31 kkkk002(003705) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:17:31 kkkk002(003705) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:17:31 kkkk002(003705) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:17:31 kkkk002(003705) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:31 kkkk002(003705) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:17:31]]
+
+2016/04/12 22:17:31 kkkk002(003705) 
+notify end
+
+2016/04/12 22:17:31 kkkk002(003705) 
+exit system signo =15
+
+2016/04/12 22:17:31 kkkk002(003710) 
+connect folder system
+
+2016/04/12 22:17:31 kkkk002(003710) 
+locate folder id
+
+2016/04/12 22:17:31 kkkk002(003710) 
+locate link msg
+
+2016/04/12 22:17:31 kkkk002(003710) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:17:31 kkkk002(003710) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:17:31 kkkk002(003710) 
+ open socket succ
+
+2016/04/12 22:17:35 kkkk002(003710) 
+accept socket succ sock=[1]
+
+2016/04/12 22:17:35 kkkk002(003710) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61126!
+
+2016/04/12 22:17:35 kkkk002(003710) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:17:35 kkkk002(003710) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:35 kkkk002(003710) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:17:35]]
+
+2016/04/12 22:17:35 kkkk002(003710) 
+check_flag =1
+
+2016/04/12 22:17:41 kkkk002(003710) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:17:41 kkkk002(003710) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:17:41 kkkk002(003710) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:17:41 kkkk002(003710) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:41 kkkk002(003710) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:17:41]]
+
+2016/04/12 22:17:41 kkkk002(003710) 
+notify end
+
+2016/04/12 22:17:41 kkkk002(003710) 
+exit system signo =15
+
+2016/04/12 22:17:41 kkkk002(003715) 
+connect folder system
+
+2016/04/12 22:17:41 kkkk002(003715) 
+locate folder id
+
+2016/04/12 22:17:41 kkkk002(003715) 
+locate link msg
+
+2016/04/12 22:17:41 kkkk002(003715) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:17:41 kkkk002(003715) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:17:41 kkkk002(003715) 
+ open socket succ
+
+2016/04/12 22:17:47 kkkk002(003715) 
+accept socket succ sock=[1]
+
+2016/04/12 22:17:47 kkkk002(003715) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61143!
+
+2016/04/12 22:17:47 kkkk002(003715) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:17:47 kkkk002(003715) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:47 kkkk002(003715) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:17:47]]
+
+2016/04/12 22:17:47 kkkk002(003715) 
+check_flag =1
+
+2016/04/12 22:17:53 kkkk002(003715) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:17:53 kkkk002(003715) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:17:53 kkkk002(003715) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:17:53 kkkk002(003715) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:17:53 kkkk002(003715) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:17:53]]
+
+2016/04/12 22:17:53 kkkk002(003715) 
+notify end
+
+2016/04/12 22:17:53 kkkk002(003715) 
+exit system signo =15
+
+2016/04/12 22:17:53 kkkk002(003720) 
+connect folder system
+
+2016/04/12 22:17:53 kkkk002(003720) 
+locate folder id
+
+2016/04/12 22:17:53 kkkk002(003720) 
+locate link msg
+
+2016/04/12 22:17:53 kkkk002(003720) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:17:53 kkkk002(003720) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:17:53 kkkk002(003720) 
+ open socket succ
+
+2016/04/12 22:18:01 kkkk002(003720) 
+accept socket succ sock=[1]
+
+2016/04/12 22:18:01 kkkk002(003720) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61161!
+
+2016/04/12 22:18:01 kkkk002(003720) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:18:01 kkkk002(003720) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:01 kkkk002(003720) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:18:01]]
+
+2016/04/12 22:18:01 kkkk002(003720) 
+check_flag =1
+
+2016/04/12 22:18:07 kkkk002(003720) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:18:07 kkkk002(003720) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:18:07 kkkk002(003720) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:18:07 kkkk002(003720) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:07 kkkk002(003720) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:18:07]]
+
+2016/04/12 22:18:07 kkkk002(003720) 
+notify end
+
+2016/04/12 22:18:07 kkkk002(003720) 
+exit system signo =15
+
+2016/04/12 22:18:07 kkkk002(003727) 
+connect folder system
+
+2016/04/12 22:18:07 kkkk002(003727) 
+locate folder id
+
+2016/04/12 22:18:07 kkkk002(003727) 
+locate link msg
+
+2016/04/12 22:18:07 kkkk002(003727) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:18:07 kkkk002(003727) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:18:07 kkkk002(003727) 
+ open socket succ
+
+2016/04/12 22:18:11 kkkk002(003727) 
+accept socket succ sock=[1]
+
+2016/04/12 22:18:11 kkkk002(003727) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61178!
+
+2016/04/12 22:18:11 kkkk002(003727) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:18:11 kkkk002(003727) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:11 kkkk002(003727) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:18:11]]
+
+2016/04/12 22:18:11 kkkk002(003727) 
+check_flag =1
+
+2016/04/12 22:18:16 kkkk002(003727) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:18:16 kkkk002(003727) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:18:16 kkkk002(003727) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:18:16 kkkk002(003727) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:16 kkkk002(003727) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:18:16]]
+
+2016/04/12 22:18:16 kkkk002(003727) 
+notify end
+
+2016/04/12 22:18:16 kkkk002(003727) 
+exit system signo =15
+
+2016/04/12 22:18:16 kkkk002(003732) 
+connect folder system
+
+2016/04/12 22:18:16 kkkk002(003732) 
+locate folder id
+
+2016/04/12 22:18:16 kkkk002(003732) 
+locate link msg
+
+2016/04/12 22:18:16 kkkk002(003732) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:18:16 kkkk002(003732) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:18:16 kkkk002(003732) 
+ open socket succ
+
+2016/04/12 22:18:21 kkkk002(003732) 
+accept socket succ sock=[1]
+
+2016/04/12 22:18:21 kkkk002(003732) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61192!
+
+2016/04/12 22:18:21 kkkk002(003732) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:18:21 kkkk002(003732) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:21 kkkk002(003732) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:18:21]]
+
+2016/04/12 22:18:21 kkkk002(003732) 
+check_flag =1
+
+2016/04/12 22:18:25 kkkk002(003732) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:18:25 kkkk002(003732) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:18:25 kkkk002(003732) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:18:25 kkkk002(003732) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:25 kkkk002(003732) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:18:25]]
+
+2016/04/12 22:18:25 kkkk002(003732) 
+notify end
+
+2016/04/12 22:18:25 kkkk002(003732) 
+exit system signo =15
+
+2016/04/12 22:18:25 kkkk002(003737) 
+connect folder system
+
+2016/04/12 22:18:25 kkkk002(003737) 
+locate folder id
+
+2016/04/12 22:18:25 kkkk002(003737) 
+locate link msg
+
+2016/04/12 22:18:25 kkkk002(003737) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:18:25 kkkk002(003737) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:18:25 kkkk002(003737) 
+ open socket succ
+
+2016/04/12 22:18:35 kkkk002(003737) 
+accept socket succ sock=[1]
+
+2016/04/12 22:18:35 kkkk002(003737) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61214!
+
+2016/04/12 22:18:35 kkkk002(003737) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:18:35 kkkk002(003737) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:35 kkkk002(003737) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:18:35]]
+
+2016/04/12 22:18:35 kkkk002(003737) 
+check_flag =1
+
+2016/04/12 22:18:40 kkkk002(003737) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:18:40 kkkk002(003737) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:18:40 kkkk002(003737) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:18:40 kkkk002(003737) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:40 kkkk002(003737) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:18:40]]
+
+2016/04/12 22:18:40 kkkk002(003737) 
+notify end
+
+2016/04/12 22:18:40 kkkk002(003737) 
+exit system signo =15
+
+2016/04/12 22:18:40 kkkk002(003742) 
+connect folder system
+
+2016/04/12 22:18:40 kkkk002(003742) 
+locate folder id
+
+2016/04/12 22:18:40 kkkk002(003742) 
+locate link msg
+
+2016/04/12 22:18:40 kkkk002(003742) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:18:40 kkkk002(003742) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:18:40 kkkk002(003742) 
+ open socket succ
+
+2016/04/12 22:18:45 kkkk002(003742) 
+accept socket succ sock=[1]
+
+2016/04/12 22:18:45 kkkk002(003742) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61228!
+
+2016/04/12 22:18:45 kkkk002(003742) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:18:45 kkkk002(003742) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:45 kkkk002(003742) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:18:45]]
+
+2016/04/12 22:18:45 kkkk002(003742) 
+check_flag =1
+
+2016/04/12 22:18:51 kkkk002(003742) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:18:51 kkkk002(003742) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:18:51 kkkk002(003742) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:18:51 kkkk002(003742) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:51 kkkk002(003742) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:18:51]]
+
+2016/04/12 22:18:51 kkkk002(003742) 
+notify end
+
+2016/04/12 22:18:51 kkkk002(003742) 
+exit system signo =15
+
+2016/04/12 22:18:51 kkkk002(003747) 
+connect folder system
+
+2016/04/12 22:18:51 kkkk002(003747) 
+locate folder id
+
+2016/04/12 22:18:51 kkkk002(003747) 
+locate link msg
+
+2016/04/12 22:18:51 kkkk002(003747) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:18:51 kkkk002(003747) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:18:51 kkkk002(003747) 
+ open socket succ
+
+2016/04/12 22:18:57 kkkk002(003747) 
+accept socket succ sock=[1]
+
+2016/04/12 22:18:57 kkkk002(003747) 
+<Tcpip--kkkk002> accept a conn from 127.0.0.1:61246!
+
+2016/04/12 22:18:57 kkkk002(003747) 
+create socket succ! sockid=[1]
+
+2016/04/12 22:18:57 kkkk002(003747) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:18:57 kkkk002(003747) 
+ finilsh send data =[SYSICOMML kkkk 002 3 connect ok[22:18:57]]
+
+2016/04/12 22:18:57 kkkk002(003747) 
+check_flag =1
+
+2016/04/12 22:19:16 kkkk002(003747) 
+<read_msg_from_net>link closed[22]
+
+2016/04/12 22:19:16 kkkk002(003747) 
+<Tcpip--kkkk002> read_msg_from_net() failed:[22]Invalid argument!
+
+2016/04/12 22:19:16 kkkk002(003747) 
+<Tcpip--kkkk002> catch a signal 15 !
+
+2016/04/12 22:19:16 kkkk002(003747) 
+<Tcpip--TcpipUpdateBCDANet> fold name [kkkk] is not found in BCDA!
+
+2016/04/12 22:19:16 kkkk002(003747) 
+ finilsh send data =[SYSICOMML kkkk 002 0 disconnect[22:19:16]]
+
+2016/04/12 22:19:16 kkkk002(003747) 
+notify end
+
+2016/04/12 22:19:16 kkkk002(003747) 
+exit system signo =15
+
+2016/04/12 22:19:16 kkkk002(003752) 
+connect folder system
+
+2016/04/12 22:19:16 kkkk002(003752) 
+locate folder id
+
+2016/04/12 22:19:16 kkkk002(003752) 
+locate link msg
+
+2016/04/12 22:19:16 kkkk002(003752) 
+<Tcpip--kkkk002>  kkkk sock[1]!
+
+2016/04/12 22:19:16 kkkk002(003752) 
+<Tcpip--kkkk002> link role [2]
+
+2016/04/12 22:19:16 kkkk002(003752) 
+ open socket succ
+

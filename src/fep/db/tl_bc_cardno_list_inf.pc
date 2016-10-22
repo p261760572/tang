@@ -1,0 +1,337 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/tl_bc_cardno_list_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+tl_bc_cardno_list_inf_def tlBcCardnoListInf ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tlBcCardnoListInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode        - 返回值， 输出
+ *      p_tlBcCardnoListInf   - 查找条件，输入
+ *                         查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tlBcCardnoListInfOpr(int oprType, tl_bc_cardno_list_inf_def *p_tlBcCardnoListInf, int *p_sqlCode)
+{
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char  cardno         [19 + 1] ;  
+    char  sysdate         [100 + 1] ;  
+    char  c_sql[2048];
+    EXEC SQL END DECLARE SECTION;
+
+    char buff[256];
+
+    MEMSET_0(cardno);
+
+    char caTxnMsg[4096];
+    switch ( oprType )
+    {
+    
+    case GLB_DB_SELECT1:
+        
+        strcpy_safe(cardno, p_tlBcCardnoListInf->cardno, sizeof(cardno)-1);
+        rtrim_null(cardno,' ');
+        
+	memset(sysdate, 0, sizeof(sysdate));
+        EXEC SQL SELECT 
+		 to_char(sysdate, 'YYYYMMDD')
+		 INTO :sysdate
+		 FROM dual;
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode != 0 )
+	{
+            	glb_Log(0,0, "<TL_BC_TRANS_LOG.pc:tlBcCardnoListInfOpr:SELECT1>select Record Failure.sqlcode:%d,sqlca.sqlerrm.sqlerrmc:%s",sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc);
+		return -1;	
+	}
+	rtrim(sysdate);
+
+        EXEC SQL SELECT 
+    		cardno,
+    		relation1,
+    		relation_crtday1,
+    		relation_lastday1,
+    		relation2,
+    		relation_crtday2,
+    		relation_lastday2,
+    		relation3,
+    		relation_crtday3,
+    		relation_lastday3,
+    		relation4,
+    		relation_crtday4,
+    		relation_lastday4,
+    		relation5,
+    		relation_crtday5,
+    		relation_lastday5
+        INTO 
+           :tlBcCardnoListInf.cardno               ,   
+           :tlBcCardnoListInf.relation1            ,
+           :tlBcCardnoListInf.relation_crtday1     ,
+           :tlBcCardnoListInf.relation_lastday1    ,
+           :tlBcCardnoListInf.relation2            ,
+           :tlBcCardnoListInf.relation_crtday2     ,
+           :tlBcCardnoListInf.relation_lastday2    ,
+           :tlBcCardnoListInf.relation3            ,
+           :tlBcCardnoListInf.relation_crtday3     ,
+           :tlBcCardnoListInf.relation_lastday3    ,
+           :tlBcCardnoListInf.relation4            ,
+           :tlBcCardnoListInf.relation_crtday4     ,
+           :tlBcCardnoListInf.relation_lastday4    ,
+           :tlBcCardnoListInf.relation5            ,
+           :tlBcCardnoListInf.relation_crtday5     ,
+           :tlBcCardnoListInf.relation_lastday5
+        FROM tl_bc_cardno_list_inf
+        WHERE cardno=:cardno
+          AND rownum<=1
+          FOR update;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+        	ADJUST_STRING(tlBcCardnoListInf.relation1         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday1        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday1           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation2         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday2        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday2           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation3         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday3        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday3           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation4         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday4        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday4           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation5         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday5        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday5           )
+
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation1         )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_crtday1        )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_lastday1           )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation2         )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_crtday2        )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_lastday2           )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation3         )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_crtday3        )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_lastday3           )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation4         )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_crtday4        )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_lastday4           )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation5         )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_crtday5        )
+        	ADJUST_STRING(p_tlBcCardnoListInf->relation_lastday5           )
+		if (!strcmp(tlBcCardnoListInf.relation1, p_tlBcCardnoListInf->relation1)) 
+		{
+			tlBcCardnoListInf.index='1';
+			strcpy(tlBcCardnoListInf.relation_lastday1, sysdate);
+		}
+		else if (!strcmp(tlBcCardnoListInf.relation2, p_tlBcCardnoListInf->relation1))
+		{
+			tlBcCardnoListInf.index='2';
+			strcpy(tlBcCardnoListInf.relation_lastday2, sysdate);
+		}
+		else if (!strcmp(tlBcCardnoListInf.relation3, p_tlBcCardnoListInf->relation1))
+		{
+			tlBcCardnoListInf.index='3';
+			strcpy(tlBcCardnoListInf.relation_lastday3, sysdate);
+		}
+		else if (!strcmp(tlBcCardnoListInf.relation4, p_tlBcCardnoListInf->relation1))
+		{
+			tlBcCardnoListInf.index='4';
+			strcpy(tlBcCardnoListInf.relation_lastday4, sysdate);
+		}
+		else if (!strcmp(tlBcCardnoListInf.relation5, p_tlBcCardnoListInf->relation1))
+		{
+			tlBcCardnoListInf.index='5';
+			strcpy(tlBcCardnoListInf.relation_lastday5, sysdate);
+		}
+		else
+		{
+			if (strlen(rtrim(tlBcCardnoListInf.relation2))==0) 
+			{
+				tlBcCardnoListInf.index='2';
+				strcpy(tlBcCardnoListInf.relation2, p_tlBcCardnoListInf->relation1);
+				strcpy(tlBcCardnoListInf.relation_crtday2, sysdate);
+				strcpy(tlBcCardnoListInf.relation_lastday2, sysdate);
+			}
+			else if (strlen(rtrim(tlBcCardnoListInf.relation3))==0) 
+			{
+				tlBcCardnoListInf.index='3';
+				strcpy(tlBcCardnoListInf.relation3, p_tlBcCardnoListInf->relation1);
+				strcpy(tlBcCardnoListInf.relation_crtday3, sysdate);
+				strcpy(tlBcCardnoListInf.relation_lastday3, sysdate);
+			}
+			else if (strlen(rtrim(tlBcCardnoListInf.relation4))==0) 
+			{
+				tlBcCardnoListInf.index='4';
+				strcpy(tlBcCardnoListInf.relation4, p_tlBcCardnoListInf->relation1);
+				strcpy(tlBcCardnoListInf.relation_crtday4, sysdate);
+				strcpy(tlBcCardnoListInf.relation_lastday4, sysdate);
+			}
+			else if (strlen(rtrim(tlBcCardnoListInf.relation5))==0)
+			{
+				tlBcCardnoListInf.index='5';
+				strcpy(tlBcCardnoListInf.relation5, p_tlBcCardnoListInf->relation1);
+				strcpy(tlBcCardnoListInf.relation_crtday5, sysdate);
+				strcpy(tlBcCardnoListInf.relation_lastday5, sysdate);
+			}
+			else
+			{
+		  		memcpy((char *)p_tlBcCardnoListInf, (char *)&tlBcCardnoListInf, sizeof(tl_bc_cardno_list_inf_def));
+				p_tlBcCardnoListInf->index='6';
+        			EXEC SQL COMMIT WORK ;
+				break;
+			}
+		}
+
+        	ADJUST_STRING(tlBcCardnoListInf.cardno         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation1         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday1        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday1           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation2         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday2        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday2           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation3         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday3        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday3           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation4         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday4        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday4           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation5         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday5        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday5           )
+
+        	EXEC SQL UPDATE tl_bc_cardno_list_inf SET
+        		relation1         = :tlBcCardnoListInf.relation1         ,
+        		relation_crtday1  = :tlBcCardnoListInf.relation_crtday1  ,
+        		relation_lastday1 = :tlBcCardnoListInf.relation_lastday1 ,
+        		relation2         = :tlBcCardnoListInf.relation2         ,
+        		relation_crtday2  = :tlBcCardnoListInf.relation_crtday2  ,
+        		relation_lastday2 = :tlBcCardnoListInf.relation_lastday2 ,
+        		relation3         = :tlBcCardnoListInf.relation3         ,
+        		relation_crtday3  = :tlBcCardnoListInf.relation_crtday3  ,
+        		relation_lastday3 = :tlBcCardnoListInf.relation_lastday3 ,
+        		relation4         = :tlBcCardnoListInf.relation4         ,
+        		relation_crtday4  = :tlBcCardnoListInf.relation_crtday4  ,
+        		relation_lastday4 = :tlBcCardnoListInf.relation_lastday4 ,
+        		relation5         = :tlBcCardnoListInf.relation5         ,
+        		relation_crtday5  = :tlBcCardnoListInf.relation_crtday5  ,
+        		relation_lastday5 = :tlBcCardnoListInf.relation_lastday5
+        	  WHERE cardno=:cardno
+          	    AND rownum<=1;
+
+		  memcpy((char *)p_tlBcCardnoListInf, (char *)&tlBcCardnoListInf, sizeof(tl_bc_cardno_list_inf_def));
+        	  *p_sqlCode = sqlca.sqlcode;
+        	  if ( sqlca.sqlcode == 0 )
+        	  {
+        	  } else if ( sqlca.sqlcode == 1403 )
+        	  {
+            	  	*p_sqlCode = SQL_ERD_NONE_RECORD;
+            	  	glb_Log(0,0, "<TL_BC_TRANS_LOG.pc:tlBcCardnoListInfOpr:UPDATE1>Search Record (cardno:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", cardno,sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        	  } else
+        	  {
+            	  	glb_Log(0,0, "<TL_BC_TRANS_LOG.pc:tlBcCardnoListInfOpr:UPDATE1>Search Record (cardno:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", cardno,sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        	  }
+        	  EXEC SQL COMMIT WORK ;
+        	  break;
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+        	/*copy buff*/
+        	memcpy(&tlBcCardnoListInf, p_tlBcCardnoListInf, sizeof(tl_bc_cardno_list_inf_def));
+
+        	/* add other field*/
+        	ADJUST_STRING(tlBcCardnoListInf.cardno         )
+		strcpy(tlBcCardnoListInf.relation_crtday1, sysdate);
+		strcpy(tlBcCardnoListInf.relation_lastday1, sysdate);
+        	ADJUST_STRING(tlBcCardnoListInf.relation1         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday1        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday1           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation2         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday2        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday2           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation3         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday3        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday3           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation4         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday4        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday4           )
+        	ADJUST_STRING(tlBcCardnoListInf.relation5         )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_crtday5        )
+        	ADJUST_STRING(tlBcCardnoListInf.relation_lastday5           )
+
+        	EXEC SQL insert into tl_bc_cardno_list_inf(cardno,relation1,relation_crtday1,relation_lastday1,relation2,relation_crtday2,relation_lastday2,relation3,relation_crtday3,relation_lastday3,relation4,relation_crtday4,relation_lastday4,relation5,relation_crtday5,relation_lastday5) values
+        	(
+        	:tlBcCardnoListInf.cardno            ,
+        	:tlBcCardnoListInf.relation1         ,
+        	:tlBcCardnoListInf.relation_crtday1  ,
+        	:tlBcCardnoListInf.relation_lastday1 ,
+        	:tlBcCardnoListInf.relation2         ,
+        	:tlBcCardnoListInf.relation_crtday2  ,
+        	:tlBcCardnoListInf.relation_lastday2 ,
+        	:tlBcCardnoListInf.relation3         ,
+        	:tlBcCardnoListInf.relation_crtday3  ,
+        	:tlBcCardnoListInf.relation_lastday3 ,
+        	:tlBcCardnoListInf.relation4         ,
+        	:tlBcCardnoListInf.relation_crtday4  ,
+        	:tlBcCardnoListInf.relation_lastday4 ,
+        	:tlBcCardnoListInf.relation5         ,
+        	:tlBcCardnoListInf.relation_crtday5  ,
+        	:tlBcCardnoListInf.relation_lastday5
+        	)
+        	;
+
+		memcpy((char *)p_tlBcCardnoListInf, (char *)&tlBcCardnoListInf, sizeof(tl_bc_cardno_list_inf_def));
+		p_tlBcCardnoListInf->index='1';
+        	/* insert result */
+        	*p_sqlCode = sqlca.sqlcode;
+        	if ( sqlca.sqlcode == 0 )
+        	{
+        	} else if ( memcmp(sqlca.sqlerrm.sqlerrmc, "ORA-00001", 9 ) == 0 )
+        	{
+            		*p_sqlCode = SQL_ERD_UNIKEY;
+            		glb_Log(0,0, "<TL_BC_TRANS_LOG.pc:tlBcCardnoListInfOpr:INSERT1>Insert Record is exist.sqlcode:%d,sqlca.sqlerrm.sqlerrmc:%s",sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc);
+        	} else
+        	{
+            		glb_Log(0,0, "<TL_BC_TRANS_LOG.pc:tlBcCardnoListInfOpr:INSERT1>Insert Record Failure.sqlcode:%d,sqlca.sqlerrm.sqlerrmc:%s",sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc);
+        	}
+        	EXEC SQL COMMIT WORK ;
+        	break;
+        } else
+        {
+            	glb_Log(0,0, "<FILE:%s,LINE:%d><TL_BC_TRANS_LOG.pc:tlBcCardnoListInfOpr:SELECT1>Search Record (cardno:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n",__FILE__,__LINE__, cardno, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+

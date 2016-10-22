@@ -1,0 +1,52 @@
+HOMEPATH = $(HOME)/tang/
+PATHOBJ = $(HOMEPATH)src/fep/db/
+ORAINC = -I$(HOMEPATH)db/inc/ -I$(ORACLE_HOME)/precomp/public
+ORASRC = $(HOMEPATH)src/fep/db/
+ORAOBJ = $(HOMEPATH)src/fep/db/
+LIBNAME = glbdb
+PROC=proc
+
+DBBINLIB = $(HOMEPATH)src/lib/
+
+DBOBJS = $(ORAOBJ)glbdb.o
+
+static : $(DBOBJS) $(LIBNAME).a clean
+
+dynamic : $(DBOBJS) $(LIBNAME).so clean
+
+clean:
+	@rm -f $(DBOBJS)
+	@rm -f *.o
+
+ORALIB = -L$(ORACLE_HOME)/lib/ -lsqlplus -lclntsh -lpthread
+
+ALLINC = $(ORAINC) 
+
+CC = cc
+CCFLAGS = -c -g
+CFLAGSADD = $(ORAINC)
+
+.SUFFIXES: .pc .c .o .typ .h
+
+$(LIBNAME).so :
+	$(CC) -o $(DBBINLIB)$(LIBNAME).so -G -KPIC $(DASSRC) $(ORAINC) $(ORALIB)
+
+$(LIBNAME).a:$(DASOBJ)
+	$(AR) -rv $(DBBINLIB)$(LIBNAME).a $(DBOBJS)
+
+pc1:
+	$(PROC) $(PROCFLAGS) iname=$(PCCSRC) $(INCLUDE)
+
+.pc.c:
+	$(PROC) $(PROCFLAGS) UNSAFE_NULL=YES MODE=ORACLE and DBMS=V8 iname=$*
+
+.pc.o:
+	$(PROC) $(PROCFLAGS) UNSAFE_NULL=YES MODE=ORACLE and DBMS=V8 iname=$*
+	$(CC) $(CFLAGS) ${CFLAGSADD} -c $*.c
+
+.c.o:
+	$(CC) $(CFLAGS) ${CFLAGSADD} -c $*.c
+
+.typ.h:
+	$(OTT) intype=$*.typ hfile=$*.h outtype=$*o.typ $(OTTFLAGS) code=c user=scott/tiger
+

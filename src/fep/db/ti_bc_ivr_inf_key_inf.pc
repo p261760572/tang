@@ -1,0 +1,115 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_ivr_inf_key_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+char c_sql[4096];
+ti_bc_ivr_inf_key_inf_def tiBcIvrInfKeyInf ;
+EXEC SQL END DECLARE SECTION;
+
+#define MIN(a,b) a>b?b:a
+
+/*
+ *  Function:  tiBcApplConvToIvrOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcIvrInfKeyInfOpr(int oprType, ti_bc_ivr_inf_key_inf_def *p_tiBcIvrInfKeyInf, int *p_sqlCode)
+{
+    char   *caString;
+    char   *caString1;
+    char   *caString2;
+    char   caStrBuf[4096];;
+    char   caTxnMsg[4096];
+    char   caStrInf[4096];
+    char   buff[4096];
+    char   info[4096];
+    char   info1[4096];
+    char   caItem[4096];
+    int    sqlCode;
+    int    iFlag=0;
+    int    iRet,iOprListLen=0, iLen=0, iLength=0, ioffsetLength=0;
+
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char opr_cmd     [  4 + 1 ];
+    char rspcode     [  6 + 1 ];
+    EXEC SQL END DECLARE SECTION;
+
+    MEMSET_0(opr_cmd)
+    MEMSET_0(rspcode)
+
+    memcpy(opr_cmd, p_tiBcIvrInfKeyInf->opr_cmd, 4);
+    rtrim(opr_cmd);
+    ADJUST_STRING(opr_cmd);
+
+    memcpy(rspcode, p_tiBcIvrInfKeyInf->rspcode, 6);
+    rtrim(rspcode);
+    ADJUST_STRING(rspcode);
+
+    EXEC SQL DECLARE ti_bc_ivr_inf_key_inf_cur CURSOR FOR
+         SELECT opr_cmd, rspcode, keyid, keymemo, keyflag
+           FROM ti_bc_ivr_inf_key_inf
+          WHERE rtrim(opr_cmd)=:opr_cmd
+            AND rtrim(rspcode)=:rspcode;
+    *p_sqlCode = sqlca.sqlcode;
+    if ( sqlca.sqlcode )
+    {
+        sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcIvrInfKeyInfOpr:SELECT1>declare ti_bc_ivr_inf_key_inf_cur Record (rspcode:%s,opr_cmd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", rspcode,opr_cmd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        return -1;
+    }
+
+    EXEC SQL OPEN ti_bc_ivr_inf_key_inf_cur;
+    *p_sqlCode = sqlca.sqlcode;
+    if ( sqlca.sqlcode )
+    {
+        sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcIvrInfKeyInfOpr:SELECT1>open ti_bc_ivr_inf_key_inf_cur Record (rspcode:%s,opr_cmd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", rspcode,opr_cmd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        return -2;
+    }
+
+    while ( 1 )
+    {
+       	memset(&tiBcIvrInfKeyInf, 0, sizeof(ti_bc_ivr_inf_key_inf_def));
+
+	EXEC SQL FETCH ti_bc_ivr_inf_key_inf_cur into :tiBcIvrInfKeyInf.opr_cmd, :tiBcIvrInfKeyInf.rspcode, :tiBcIvrInfKeyInf.keyid, :tiBcIvrInfKeyInf.keymemo, :tiBcIvrInfKeyInf.keyflag;
+       	*p_sqlCode = sqlca.sqlcode;
+	if(sqlca.sqlcode  == 1403)
+       		break;
+	if(sqlca.sqlcode )
+	{
+        	sprintf(caTxnMsg, "<ti_bc_ivr_inf_key_inf.pc:tiBcApplConvToIvrOpr:SELECT1>fetch ti_bc_ivr_settle_inf Record (rspcode:%s,opr_cmd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", rspcode,opr_cmd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        	glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+		EXEC SQL CLOSE ti_bc_ivr_inf_key_inf_cur ;
+		return -3;
+	}
+	iFlag = 1;
+    }
+    EXEC SQL CLOSE ti_bc_ivr_inf_key_inf_cur ;
+    if (iFlag == 0)
+	*p_sqlCode  = SQL_ERD_NONE_RECORD;
+    else
+	*p_sqlCode  = 0;
+
+    return 0;
+}
+
+

@@ -1,0 +1,502 @@
+#include <string.h>
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <time.h>
+#include "../include/dbstruct.h"
+
+
+struct  _varchar {
+  unsigned short len;
+  unsigned char  arr[1];
+};
+
+typedef struct _varchar VARCHAR;
+
+  EXEC SQL BEGIN DECLARE SECTION;
+       VARCHAR  vcaUserName[20];
+       VARCHAR  vcaPassWord[20];
+  EXEC SQL END   DECLARE SECTION;
+
+  EXEC SQL INCLUDE sqlca;
+
+int
+DasConectDB()
+{
+  char  caDbCryptFlag[4];
+  char  caDbPwd[20];
+  char  caDbPwdCryp[20];
+  char  caLogName[256];
+
+  sprintf( vcaUserName.arr, "%s", (char *)getenv( "DBUSR" ));
+  vcaUserName.len = strlen( vcaUserName.arr );
+
+
+  memset( caDbPwdCryp, 0, 20 );
+  sprintf( caDbPwdCryp, "%s", (char *)getenv( "DBPWD" ));
+
+
+
+    memset( caDbPwd, 0, 20 );
+    memcpy( caDbPwd, caDbPwdCryp, strlen( caDbPwdCryp ));
+
+
+  memcpy( vcaPassWord.arr, caDbPwd, strlen( caDbPwd ));
+
+
+
+  vcaPassWord.len = strlen( caDbPwd );
+
+  EXEC SQL CONNECT :vcaUserName IDENTIFIED BY :vcaPassWord;
+
+  if ( sqlca.sqlcode == 0 )
+  {
+
+    return(0);
+
+  } else {
+
+
+    return(-1);
+
+  }
+}
+
+int
+DasEnd( int iDasOperate )
+{
+
+
+  switch ( iDasOperate) {
+    case ROLLBACK:
+  
+     /* EXEC SQL ROLLBACK WORK;*/
+      EXEC SQL ROLLBACK RELEASE;
+
+      break;
+
+    case COMMIT:
+
+      /*EXEC SQL COMMIT WORK;*/
+      EXEC SQL COMMIT RELEASE;
+      break;
+
+    default :
+      return( -1 );
+  }
+
+  return( 0 );
+
+}
+
+
+/*读取账单通知表*/
+int ReadDelNotiOutTbl(struct TimeOut_REC *p_rec)
+{
+
+
+	EXEC SQL BEGIN DECLARE SECTION;
+  int    iRcvFolderId;		 
+  int    iOrgFolderId;		 
+  int    iFlags;           
+  int    iMaxTimeout;			
+  long   iExpiredTime;    
+  char   caKey[50];	     
+  char   caRemark[80];
+	unsigned long now;
+	EXEC SQL END DECLARE SECTION;
+
+
+	time(&now);
+
+	EXEC SQL SELECT RcvFolderId,OrgFolderId,Flags,MaxTimeout,ExpiredTime,Key,Remark
+	INTO :iRcvFolderId,:iOrgFolderId,:iFlags,:iMaxTimeout,:iExpiredTime,:caKey,:caRemark
+	FROM tl_bc_bill_notify where ExpiredTime <= :now and rownum=1 for update;
+
+  if ( sqlca.sqlcode == 0 )
+  {
+		memcpy(p_rec->caKey,caKey,50);
+		memcpy(p_rec->caRemark,caRemark,80);
+		p_rec->iRcvFolderId=iRcvFolderId;
+		p_rec->iOrgFolderId=iOrgFolderId;
+		p_rec->iFlags=iFlags;
+		p_rec->iMaxTimeout=iMaxTimeout;
+		p_rec->iExpiredTime=iExpiredTime;
+                now = now+300;
+/*		exec sql delete from tl_bc_bill_notify where Key=:caKey; */
+		exec sql update tl_bc_bill_notify set ExpiredTime=:now where Key=:caKey; 
+         if( sqlca.sqlcode !=0 )
+         {
+               dcs_log(sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml,"update table tl_bc_bill_notify fail!");
+	 }
+  	 EXEC SQL COMMIT WORK ;
+  	dcs_debug(0,0, "update  noti out table success...caKey[%s],time[%ld]\n",caKey,now);
+  	 
+   	return DAS_NORMAL;
+  }
+  else if( sqlca.sqlcode == 1403 )
+  {
+/*  	    dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:delete  noti out table failuer...now[%d]\n",now); */
+        EXEC SQL COMMIT WORK ;
+		return DAS_NOT_FOUND_ERR;
+  }
+  else if( sqlca.sqlcode == -3114 )
+  {
+	return -3114;
+  }
+  else
+  {
+      dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:delete  noti table failuer...\n");
+        EXEC SQL COMMIT WORK ;
+		return DAS_OTHER_ERR;
+  }	
+}
+
+
+
+/*读取超时表*/
+int ReadDelTimeOutTbl(struct TimeOut_REC *p_rec)
+{
+
+
+	EXEC SQL BEGIN DECLARE SECTION;
+  int    iRcvFolderId;		 
+  int    iOrgFolderId;		 
+  int    iFlags;           
+  int    iMaxTimeout;			
+  long   iExpiredTime;    
+  char   caKey[50];	     
+  char   caRemark[80];
+	unsigned long now;
+	EXEC SQL END DECLARE SECTION;
+
+
+	time(&now);
+
+	EXEC SQL SELECT RcvFolderId,OrgFolderId,Flags,MaxTimeout,ExpiredTime,Key,Remark
+	INTO :iRcvFolderId,:iOrgFolderId,:iFlags,:iMaxTimeout,:iExpiredTime,:caKey,:caRemark
+	FROM tl_bc_time_out where ExpiredTime < :now and rownum=1 for update;
+	
+  if ( sqlca.sqlcode == 0 )
+  {
+		memcpy(p_rec->caKey,caKey,50);
+		memcpy(p_rec->caRemark,caRemark,80);
+		p_rec->iRcvFolderId=iRcvFolderId;
+		p_rec->iOrgFolderId=iOrgFolderId;
+		p_rec->iFlags=iFlags;
+		p_rec->iMaxTimeout=iMaxTimeout;
+		p_rec->iExpiredTime=iExpiredTime;
+
+		exec sql delete from tl_bc_time_out where Key=:caKey;
+  	 	EXEC SQL COMMIT WORK ;
+   		return DAS_NORMAL;
+  }
+  else if( sqlca.sqlcode == 1403 )
+  {
+    /*  dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:delete o time out table failuer...\n"); */
+        EXEC SQL COMMIT WORK ;
+		return DAS_NOT_FOUND_ERR;
+  }
+  else if( sqlca.sqlcode == -3114 )
+  {
+	return -3114;
+  }
+  else
+  {
+        dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:delete  into time out table failuer...\n");
+        EXEC SQL COMMIT WORK ;
+		return DAS_OTHER_ERR;
+  }	
+
+}
+
+
+
+/*插入超时表*/
+int InsTimeOutTBL(struct TimeOut_REC *p_rec)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+  int    iRcvFolderId;		 
+  int    iOrgFolderId;		 
+  int    iFlags;           
+  int    iMaxTimeout;			
+  long   iExpiredTime;    
+  char   caKey[50];	     
+  char   caRemark[80];
+	EXEC SQL END DECLARE SECTION;
+
+	long now;
+
+	time(&now);
+
+	memset(	caKey,0,sizeof(caKey));
+	memset(	caRemark,0,sizeof(caRemark));
+	memcpy(caKey,p_rec->caKey,50);
+	memcpy(caRemark,p_rec->caRemark,80);
+	iRcvFolderId=p_rec->iRcvFolderId;
+	iOrgFolderId=p_rec->iOrgFolderId;
+	iFlags=p_rec->iFlags;
+	iMaxTimeout=p_rec->iMaxTimeout;
+	iExpiredTime=now + iMaxTimeout;
+
+	
+	EXEC SQL insert into tl_bc_time_out
+	(RcvFolderId,OrgFolderId,Flags,MaxTimeout,ExpiredTime,Key,Remark)
+	 values
+	(:iRcvFolderId,:iOrgFolderId,:iFlags,:iMaxTimeout,:iExpiredTime,:caKey,:caRemark);
+      
+      if ( sqlca.sqlcode == 0 )
+      {
+       EXEC SQL COMMIT WORK ;
+       return DAS_NORMAL;
+      }
+      else if( sqlca.sqlcode == 1403 )
+      {
+          EXEC SQL COMMIT WORK ;
+          dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:insert into time out table failuer...\n");
+          return DAS_DUPLICATE_ERR;
+      }
+      else
+      {
+          EXEC SQL COMMIT WORK ;
+          dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:insert into time out table failuer...\n");
+          return DAS_OTHER_ERR;
+      }
+}
+/*删除超时表*/
+int DelTimeOutTBL(struct TimeOut_REC *p_rec)
+{
+
+	EXEC SQL BEGIN DECLARE SECTION;
+  int    iRcvFolderId;		 
+  int    iOrgFolderId;		 
+  int    iFlags;           
+  int    iMaxTimeout;			
+  long   iExpiredTime;    
+  char   caKey[50];	     
+  char   caRemark[80];
+	EXEC SQL END DECLARE SECTION;
+
+	memset(	caKey,0,sizeof(caKey));
+	memset(	caRemark,0,sizeof(caRemark));
+	memcpy(caKey,p_rec->caKey,50);
+
+	EXEC SQL SELECT RcvFolderId,OrgFolderId,Flags,MaxTimeout,ExpiredTime,Key,Remark
+	INTO :iRcvFolderId,:iOrgFolderId,:iFlags,:iMaxTimeout,:iExpiredTime,:caKey,:caRemark
+	FROM tl_bc_time_out where Key=:caKey for update
+    ;
+
+  if ( sqlca.sqlcode == 0 )
+  {
+	memcpy(p_rec->caKey,caKey,50);
+	memcpy(p_rec->caRemark,caRemark,80);
+	p_rec->iRcvFolderId=iRcvFolderId;
+	p_rec->iOrgFolderId=iOrgFolderId;
+	p_rec->iFlags=iFlags;
+	p_rec->iMaxTimeout=iMaxTimeout;
+	p_rec->iExpiredTime=iExpiredTime;
+
+	exec sql delete from tl_bc_time_out where Key=:caKey;
+   EXEC SQL COMMIT WORK ;
+   return DAS_NORMAL;
+  }
+  else if( sqlca.sqlcode == 1403 )
+  {
+  	dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:delete o time out table failuer...\n");
+    EXEC SQL COMMIT WORK ;
+		return DAS_NOT_FOUND_ERR;
+  }
+  else
+  {
+  	dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:delete  into time out table failuer...\n");
+    EXEC SQL COMMIT WORK ;
+		return DAS_OTHER_ERR;
+  }
+}
+
+
+/*插入账单超时表*/
+int InsTimeOutTBL_2(struct TimeOut_REC *p_rec)
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+  int    iRcvFolderId;		 
+  int    iOrgFolderId;		 
+  int    iFlags;           
+  int    iMaxTimeout;			
+  long   iExpiredTime;    
+  char   caKey[50];	     
+  char   caRemark[80];
+	EXEC SQL END DECLARE SECTION;
+
+	long now;
+
+	time(&now);
+
+	memset(	caKey,0,sizeof(caKey));
+	memset(	caRemark,0,sizeof(caRemark));
+	memcpy(caKey,p_rec->caKey,50);
+	memcpy(caRemark,p_rec->caRemark,80);
+	iRcvFolderId=p_rec->iRcvFolderId;
+	iOrgFolderId=p_rec->iOrgFolderId;
+	iFlags=p_rec->iFlags;
+	iMaxTimeout=p_rec->iMaxTimeout;
+	iExpiredTime=now + iMaxTimeout;
+
+	
+	EXEC SQL insert into tl_bc_bill_notify
+	(RcvFolderId,OrgFolderId,Flags,MaxTimeout,ExpiredTime,Key,Remark)
+	 values
+	(:iRcvFolderId,:iOrgFolderId,:iFlags,:iMaxTimeout,:iExpiredTime,:caKey,:caRemark);
+      
+      if ( sqlca.sqlcode == 0 )
+      {
+       EXEC SQL COMMIT WORK ;
+       return DAS_NORMAL;
+      }
+      else if( sqlca.sqlcode == 1403 )
+      {
+      	dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:insert into time out table failuer...\n");
+        EXEC SQL COMMIT WORK ;
+				return DAS_DUPLICATE_ERR;
+      }
+      else
+      {
+      	dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:insert into time out table failuer...\n");
+        EXEC SQL COMMIT WORK ;
+				return DAS_OTHER_ERR;
+      }
+}
+/*删除账单超时表*/
+int DelTimeOutTBL_2(struct TimeOut_REC *p_rec)
+{
+
+	EXEC SQL BEGIN DECLARE SECTION;
+  int    iRcvFolderId;		 
+  int    iOrgFolderId;		 
+  int    iFlags;           
+  int    iMaxTimeout;			
+  long   iExpiredTime;    
+  char   caKey[50];	     
+  char   caRemark[80];
+	EXEC SQL END DECLARE SECTION;
+
+	memset(	caKey,0,sizeof(caKey));
+	memset(	caRemark,0,sizeof(caRemark));
+	memcpy(caKey,p_rec->caKey,50);
+
+	EXEC SQL SELECT RcvFolderId,OrgFolderId,Flags,MaxTimeout,ExpiredTime,Key,Remark
+	INTO :iRcvFolderId,:iOrgFolderId,:iFlags,:iMaxTimeout,:iExpiredTime,:caKey,:caRemark
+	FROM tl_bc_bill_notify where Key=:caKey for update
+    ;
+
+  if ( sqlca.sqlcode == 0 )
+  {
+	memcpy(p_rec->caKey,caKey,50);
+	memcpy(p_rec->caRemark,caRemark,80);
+	p_rec->iRcvFolderId=iRcvFolderId;
+	p_rec->iOrgFolderId=iOrgFolderId;
+	p_rec->iFlags=iFlags;
+	p_rec->iMaxTimeout=iMaxTimeout;
+	p_rec->iExpiredTime=iExpiredTime;
+
+	exec sql delete from tl_bc_bill_notify where Key=:caKey;
+   EXEC SQL COMMIT WORK ;
+   return DAS_NORMAL;
+  }
+  else if( sqlca.sqlcode == 1403 )
+  {
+  	dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:delete o time out table failuer...\n");
+    EXEC SQL COMMIT WORK ;
+		return DAS_NOT_FOUND_ERR;
+  }
+  else
+  {
+  	dcs_log(sqlca.sqlerrm.sqlerrmc, sqlca.sqlerrm.sqlerrml, "ERR:delete  into time out table failuer...\n");
+    EXEC SQL COMMIT WORK ;
+		return DAS_OTHER_ERR;
+  }
+}
+
+/*
+int GetAllTPASafRecord(char *pSettDate)
+{
+
+	EXEC SQL BEGIN DECLARE SECTION;
+	char caWordDate[8+1];
+	EXEC SQL END DECLARE SECTION;
+	int iSqlCode=-1;
+	
+	memset(caWordDate,0,sizeof(caWordDate));
+	memcpy(caWordDate,pSettDate,8);
+	EXEC SQL DECLARE TAX_CURSOR CURSOR FOR
+	select TAX_WORKDATE,TAX_ORIRESP,TAX_BANKNO,TAX_ORIORGCODE,TAX_ORIENTRUSTDATE,TAX_ORITRANO,TAX_VOUNO,TAX_DATETIME
+	 	from taxpaystatus where TAX_WORKDATE=:caWordDate and TAX_SNDFLAG=0;
+	EXEC SQL OPEN TAX_CURSOR;
+	iSqlCode = sqlca.sqlcode;
+	if(iSqlCode != 0)
+	{
+    ErrLog( 1000, "GetAllTPASafRecord oracle err", RPT_TO_LOG, sqlca.sqlerrm.sqlerrmc,
+            sqlca.sqlerrm.sqlerrml );
+
+	}
+	return iSqlCode;
+}
+
+int dbclosecursor( )
+{
+
+	EXEC SQL CLOSE TAX_CURSOR;
+	return 0;
+	
+}
+
+int GetNextSafRecord(struct TAXPAYSTATUSst *stTaxPay)
+{
+
+	EXEC SQL BEGIN DECLARE SECTION;
+	char TAX_WORKDATE       [9+1];            
+	char TAX_ORIRESP        [5+1];
+	char TAX_BANKNO         [12+1];
+	char TAX_ORIORGCODE     [12+1];
+	char TAX_ORIENTRUSTDATE [8+1];
+	char TAX_ORITRANO       [8+1];
+	char TAX_VOUNO          [18+1];
+	char TAX_DATETIME       [14+1];
+	EXEC SQL END DECLARE SECTION;
+	int iSqlCode=-1;
+
+	memset(TAX_WORKDATE,0,sizeof(TAX_WORKDATE));			
+	memset(TAX_ORIRESP,0,sizeof(TAX_ORIRESP));			
+	memset(TAX_BANKNO,0,sizeof(TAX_BANKNO));			
+	memset(TAX_ORIORGCODE,0,sizeof(TAX_ORIORGCODE));			
+	memset(TAX_ORIENTRUSTDATE,0,sizeof(TAX_ORIENTRUSTDATE));			
+	memset(TAX_ORITRANO,0,sizeof(TAX_ORITRANO));			
+	memset(TAX_VOUNO,0,sizeof(TAX_VOUNO));			
+	memset(TAX_DATETIME,0,sizeof(TAX_DATETIME));
+	
+	EXEC SQL FETCH TAX_CURSOR into 
+		:TAX_WORKDATE,:TAX_ORIRESP,:TAX_BANKNO,:TAX_ORIORGCODE,:TAX_ORIENTRUSTDATE,:TAX_ORITRANO,:TAX_VOUNO,:TAX_DATETIME;
+	iSqlCode = sqlca.sqlcode;
+	if(iSqlCode==0)
+	{
+				memcpy(	stTaxPay->tax_workdate,TAX_WORKDATE,8);
+				memcpy(	stTaxPay->tax_oriresp,TAX_ORIRESP,5);
+				memcpy(	stTaxPay->tax_bankno,TAX_BANKNO,12);
+				memcpy(	stTaxPay->tax_oriorgcode,TAX_ORIORGCODE,12);
+				memcpy(	stTaxPay->tax_orientrustdate,TAX_ORIENTRUSTDATE,8);
+				memcpy(	stTaxPay->tax_oritrano,TAX_ORITRANO,8);
+				memcpy(	stTaxPay->tax_vouno,TAX_VOUNO,18);
+				memcpy(	stTaxPay->tax_datetime,TAX_DATETIME,14);
+
+	}
+	
+	if(iSqlCode != 0)
+	{
+    ErrLog( 1000, "GetNextSafRecord oracle err", RPT_TO_LOG, sqlca.sqlerrm.sqlerrmc,sqlca.sqlerrm.sqlerrml );
+
+	}
+	return iSqlCode;
+}
+
+*/

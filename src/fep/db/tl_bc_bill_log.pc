@@ -1,0 +1,511 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/tl_bc_bill_log.h"
+#include "./inc/tl_bc_trans_log.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+tl_bc_bill_log_def tlBcBillLog ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tlBcTransLogOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode        - 返回值， 输出
+ *      p_tlBcTransLog   - 查找条件，输入
+ *                         查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tlBcBillLogOpr(int oprType, tl_bc_bill_log_def *p_tlBcBillLog, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char loc_trans_dt  [ 4   + 1 ];
+    char sys_tra_no    [ 19  + 1 ];
+    char mchnt_cd      [ 15   + 1 ];
+    char bill_id       [ 19  + 1 ];
+    char fwd_ins_id_cd [  8  + 1 ];
+    long bill_num;
+    EXEC SQL END DECLARE SECTION;
+
+    int i;
+    char buff[256];
+    MEMSET_0(loc_trans_dt);
+    MEMSET_0(sys_tra_no);
+    MEMSET_0(bill_id);
+    MEMSET_0(fwd_ins_id_cd);
+    MEMSET_0(mchnt_cd);
+
+    switch ( oprType )
+    {
+    
+    case GLB_DB_SELECT1:
+
+				 strcpy_safe(mchnt_cd, p_tlBcBillLog->mchnt_cd,sizeof(mchnt_cd)-1) ;
+        rtrim_null(mchnt_cd, ' ') ;
+        
+        strcpy_safe(loc_trans_dt, p_tlBcBillLog->loc_trans_dt,sizeof(loc_trans_dt)-1) ;
+        rtrim_null(loc_trans_dt, ' ') ;
+        
+        strcpy_safe(sys_tra_no, p_tlBcBillLog->sys_tra_no,sizeof(sys_tra_no)-1) ;
+        rtrim_null(sys_tra_no, ' ') ;
+
+        EXEC SQL SELECT 
+        bc_settle_in       ,
+        trans_at           ,
+        mobile_no          ,
+        sys_tra_no         ,
+        loc_trans_tm       ,
+        loc_trans_dt       ,
+        settle_dt          ,
+        resp_code          ,
+        fwd_ins_id_cd      ,
+        retri_ref_no      ,
+        resp_cd            ,
+        mchnt_cd           ,
+        bill_id            ,
+        rec_crt_ts         ,
+        rec_upd_ts         ,
+        bill_id_rcv
+        INTO :tlBcBillLog
+        FROM tl_bc_bill_log
+        WHERE loc_trans_dt=:loc_trans_dt
+			AND mchnt_cd=:mchnt_cd
+			AND sys_tra_no=:sys_tra_no
+                           ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tlBcBillLog, &tlBcBillLog, sizeof(tl_bc_bill_log_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TL_BC_TRANS_LOG.pc:tlBcBillLogOpr:SELECT1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr:SELECT1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    case GLB_DB_SELECT2:
+
+        memcpy(fwd_ins_id_cd, p_tlBcBillLog->fwd_ins_id_cd,8);
+        fwd_ins_id_cd[8]=0;
+        ADJUST_STRING(fwd_ins_id_cd);
+
+        i = glb_min_strlen(p_tlBcBillLog->bill_id ,sizeof (bill_id)-1);
+        memcpy(bill_id, p_tlBcBillLog->bill_id, i );
+        bill_id[i]=0;
+        ADJUST_STRING(bill_id);
+
+        EXEC SQL SELECT 
+        bc_settle_in       ,
+        trans_at           ,
+        mobile_no          ,
+        sys_tra_no         ,
+        loc_trans_tm       ,
+        loc_trans_dt       ,
+        settle_dt          ,
+        resp_code          ,
+        fwd_ins_id_cd      ,
+        retri_ref_no     ,
+        resp_cd            ,
+        mchnt_cd           ,
+        bill_id            ,
+        rec_crt_ts         ,
+        rec_upd_ts         ,
+        bill_id_rcv
+        INTO :tlBcBillLog
+        FROM tl_bc_bill_log
+        WHERE fwd_ins_id_cd=:fwd_ins_id_cd
+                            AND bill_id=:bill_id                            	
+                            ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tlBcBillLog, &tlBcBillLog, sizeof(tl_bc_bill_log_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TL_BC_TRANS_LOG.pc:tlBcBillLogOpr:SELECT1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr:SELECT1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+
+    case GLB_DB_SELECT3:
+
+        bill_num = 0;
+
+        memcpy(fwd_ins_id_cd, p_tlBcBillLog->fwd_ins_id_cd,8);
+        fwd_ins_id_cd[8]=0;
+        ADJUST_STRING(fwd_ins_id_cd);
+
+        i = glb_min_strlen(p_tlBcBillLog->bill_id ,sizeof (bill_id)-1);
+        memcpy(bill_id, p_tlBcBillLog->bill_id, i );
+        bill_id[i]=0;
+        ADJUST_STRING(bill_id);
+
+        EXEC SQL SELECT 
+        count(*) INTO :bill_num
+        FROM tl_bc_bill_log
+        WHERE fwd_ins_id_cd=:fwd_ins_id_cd
+                            AND bill_id=:bill_id
+                            AND bc_settle_in<>'0'
+                            ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TL_BC_TRANS_LOG.pc:tlBcBillLogOpr:SELECT1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr:SELECT1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    case GLB_DB_INSERT1:    
+        glb_Log(0,0,"enter GLB_DB_INSERT1");
+
+        /*copy buff*/
+        memcpy(&tlBcBillLog, p_tlBcBillLog, sizeof(tl_bc_bill_log_def));
+
+        /* add other field*/
+        glb_GetLocalTimeString(tlBcBillLog.rec_crt_ts,15,"%Y%m%d%H%M%S");
+        glb_GetLocalTimeString(tlBcBillLog.rec_upd_ts,15,"%Y%m%d%H%M%S");
+
+        ADJUST_STRING(tlBcBillLog.bc_settle_in      )
+        glb_Adjust_Decimal(tlBcBillLog.trans_at, tlBcBillLog.trans_at, 12);
+        ADJUST_STRING(tlBcBillLog.mobile_no         )
+        ADJUST_STRING(tlBcBillLog.sys_tra_no        )
+        ADJUST_STRING(tlBcBillLog.loc_trans_tm      )
+        ADJUST_STRING(tlBcBillLog.loc_trans_dt      )
+        ADJUST_STRING(tlBcBillLog.settle_dt         )  
+        ADJUST_STRING(tlBcBillLog.resp_code         )
+        ADJUST_STRING(tlBcBillLog.fwd_ins_id_cd     )
+        ADJUST_STRING(tlBcBillLog.retri_ref_no     )
+        ADJUST_STRING(tlBcBillLog.resp_cd           )
+        ADJUST_STRING(tlBcBillLog.mchnt_cd          )        
+        ADJUST_STRING(tlBcBillLog.bill_id           )
+        ADJUST_STRING(tlBcBillLog.bill_id_rcv       )
+
+        /* execute insert sql */
+        /*EXEC SQL EXECUTE S using*/
+
+        EXEC SQL INSERT INTO tl_bc_bill_log(bc_settle_in,trans_at,mobile_no,sys_tra_no,loc_trans_tm,loc_trans_dt,settle_dt,resp_code,fwd_ins_id_cd,retri_ref_no,resp_cd,mchnt_cd,bill_id,rec_crt_ts,rec_upd_ts,bill_id_rcv)values
+        (
+        :tlBcBillLog.bc_settle_in       ,
+        :tlBcBillLog.trans_at           ,
+        :tlBcBillLog.mobile_no          ,
+        :tlBcBillLog.sys_tra_no         ,
+        :tlBcBillLog.loc_trans_tm       ,
+        :tlBcBillLog.loc_trans_dt       ,
+        :tlBcBillLog.settle_dt          ,
+        :tlBcBillLog.resp_code          ,
+        :tlBcBillLog.fwd_ins_id_cd      ,
+        :tlBcBillLog.retri_ref_no     ,
+        :tlBcBillLog.resp_cd            ,
+        :tlBcBillLog.mchnt_cd           ,
+        :tlBcBillLog.bill_id            ,
+        :tlBcBillLog.rec_crt_ts         ,
+        :tlBcBillLog.rec_upd_ts         ,
+        :tlBcBillLog.bill_id_rcv
+        )
+        ;
+
+        /* insert result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+
+
+        } else if ( memcmp(sqlca.sqlerrm.sqlerrmc, "ORA-00001", 9 ) == 0 )
+        {
+            *p_sqlCode = SQL_ERD_UNIKEY;
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr:INSERT1>Insert Record is exist.(loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", tlBcBillLog.loc_trans_dt,tlBcBillLog.mchnt_cd,tlBcBillLog.sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr:INSERT1>Insert Record Failure. (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", tlBcBillLog.loc_trans_dt,tlBcBillLog.mchnt_cd,tlBcBillLog.sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+        /* 仅更新相关标志位字段 */
+    case GLB_DB_UPDATE1:
+
+        /*copy buff*/
+        memcpy(&tlBcBillLog, p_tlBcBillLog, sizeof(tl_bc_bill_log_def));
+
+        strcpy_safe(mchnt_cd, p_tlBcBillLog->mchnt_cd,sizeof(mchnt_cd)-1) ;
+        rtrim_null(mchnt_cd, ' ') ;
+        
+        strcpy_safe(loc_trans_dt, p_tlBcBillLog->loc_trans_dt,sizeof(loc_trans_dt)-1) ;
+        rtrim_null(loc_trans_dt, ' ') ;
+        
+        strcpy_safe(sys_tra_no, p_tlBcBillLog->sys_tra_no,sizeof(sys_tra_no)-1) ;
+        rtrim_null(sys_tra_no, ' ') ;
+
+        glb_GetLocalTimeString(tlBcBillLog.rec_upd_ts,15,"%Y%m%d%H%M%S");
+
+        ADJUST_STRING(tlBcBillLog.settle_dt         )
+        ADJUST_STRING(tlBcBillLog.bc_settle_in      )
+        ADJUST_STRING(tlBcBillLog.resp_code         )
+        ADJUST_STRING(tlBcBillLog.mchnt_cd          )
+        ADJUST_STRING(tlBcBillLog.bill_id           )        
+        ADJUST_STRING(tlBcBillLog.rec_upd_ts        )
+        ADJUST_STRING(tlBcBillLog.bill_id_rcv       )
+
+        EXEC SQL UPDATE tl_bc_bill_log SET
+        settle_dt         =:tlBcBillLog.settle_dt,
+        bc_settle_in      =:tlBcBillLog.bc_settle_in,
+        resp_code         =:tlBcBillLog.resp_code,
+        bill_id           =:tlBcBillLog.bill_id,
+        rec_upd_ts        =:tlBcBillLog.rec_upd_ts,
+        bill_id_rcv       =:tlBcBillLog.bill_id_rcv
+                           WHERE loc_trans_dt=:loc_trans_dt
+                           AND mchnt_cd=:mchnt_cd
+                           AND sys_tra_no=:sys_tra_no
+                           ;
+
+        /* update result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            /*memcpy(p_tlBcBillLog, &tlBcBillLog, sizeof(tl_bc_bill_log_def));*/
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr:UPDATE1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr:UPDATE1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+        /* 更新key以外的所有字段 */
+    case GLB_DB_UPDATE2:
+
+        /*copy buff*/
+        memcpy(&tlBcBillLog, p_tlBcBillLog, sizeof(tl_bc_bill_log_def));
+
+        memcpy(fwd_ins_id_cd, p_tlBcBillLog->fwd_ins_id_cd,8);
+        fwd_ins_id_cd[8]=0;
+        ADJUST_STRING(fwd_ins_id_cd);
+
+        i = glb_min_strlen(p_tlBcBillLog->bill_id ,sizeof (bill_id));
+        memcpy(bill_id, p_tlBcBillLog->bill_id, i );
+        bill_id[i]=0;
+        ADJUST_STRING(bill_id);
+
+        /* add other field*/
+        glb_GetLocalTimeString(tlBcBillLog.rec_crt_ts,15,"%Y%m%d%H%M%S");
+        glb_GetLocalTimeString(tlBcBillLog.rec_upd_ts,15,"%Y%m%d%H%M%S");
+
+        ADJUST_STRING(tlBcBillLog.bc_settle_in      )
+        glb_Adjust_Decimal(tlBcBillLog.trans_at, tlBcBillLog.trans_at, 12);
+        ADJUST_STRING(tlBcBillLog.mobile_no         )
+        ADJUST_STRING(tlBcBillLog.sys_tra_no        )
+        ADJUST_STRING(tlBcBillLog.loc_trans_tm      )
+        ADJUST_STRING(tlBcBillLog.loc_trans_dt      )
+        ADJUST_STRING(tlBcBillLog.settle_dt         )  
+        ADJUST_STRING(tlBcBillLog.resp_code         )
+        ADJUST_STRING(tlBcBillLog.fwd_ins_id_cd     )
+        ADJUST_STRING(tlBcBillLog.retri_ref_no     )
+        ADJUST_STRING(tlBcBillLog.resp_cd           )
+        ADJUST_STRING(tlBcBillLog.mchnt_cd          )
+        ADJUST_STRING(tlBcBillLog.bill_id           )
+        ADJUST_STRING(tlBcBillLog.bill_id_rcv       )
+
+        /* execute insert sql */
+        /*EXEC SQL EXECUTE S using*/
+        EXEC SQL UPDATE tl_bc_bill_log set
+        bc_settle_in               =:tlBcBillLog.bc_settle_in       ,
+        trans_at                   =:tlBcBillLog.trans_at           ,
+        mobile_no                  =:tlBcBillLog.mobile_no          ,
+        sys_tra_no                 =:tlBcBillLog.sys_tra_no         ,
+        loc_trans_tm               =:tlBcBillLog.loc_trans_tm       ,
+        loc_trans_dt               =:tlBcBillLog.loc_trans_dt       ,
+        settle_dt                  =:tlBcBillLog.settle_dt          ,
+        resp_code                  =:tlBcBillLog.resp_code          ,
+        retri_ref_no               =:tlBcBillLog.retri_ref_no          ,	
+        resp_cd                    =:tlBcBillLog.resp_cd            ,
+        mchnt_cd                   =:tlBcBillLog.mchnt_cd           ,
+        rec_crt_ts                 =:tlBcBillLog.rec_crt_ts         ,
+        rec_upd_ts                 =:tlBcBillLog.rec_upd_ts         ,
+        bill_id_rcv                =:tlBcBillLog.bill_id_rcv        
+                                    WHERE fwd_ins_id_cd=:fwd_ins_id_cd AND bill_id=:bill_id
+                                    ;
+
+        /* update result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            /*memcpy(p_tlBcBillLog, &tlBcBillLog, sizeof(tl_bc_bill_log_def));*/
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr:UPDATE2>Search Record (fwd_ins_id_cd:%s,bill_id:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", fwd_ins_id_cd,bill_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr:UPDATE2>Search Record (fwd_ins_id_cd:%s,bill_id:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n",  fwd_ins_id_cd,bill_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+
+int tlBcBillLogOpr2(int oprType, tl_bc_bill_log_def *p_tlBcBillLog, int *p_sqlCode, int *ReturnNum)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char bill_id       [ 76  + 1 ];
+    char fwd_ins_id_cd [  8  + 1 ];
+    long bill_num;
+    EXEC SQL END DECLARE SECTION;
+
+    int i;
+    char buff[256];
+    MEMSET_0(bill_id);
+    MEMSET_0(fwd_ins_id_cd);
+
+    char caTxnMsg[1024];
+    switch ( oprType )
+    {
+    case GLB_DB_SELECT1:
+
+        bill_num = 0;
+
+        memcpy(fwd_ins_id_cd, p_tlBcBillLog->fwd_ins_id_cd,8);
+        fwd_ins_id_cd[8]=0;
+        ADJUST_STRING(fwd_ins_id_cd);
+
+        i = glb_min_strlen(p_tlBcBillLog->bill_id ,sizeof (bill_id));
+        memcpy(bill_id, p_tlBcBillLog->bill_id, i );
+        bill_id[i]=0;
+        ADJUST_STRING(bill_id);
+
+        EXEC SQL SELECT bc_settle_in INTO :tlBcBillLog.bc_settle_in
+        FROM tl_bc_bill_log
+        WHERE fwd_ins_id_cd=:fwd_ins_id_cd
+                            AND bill_id=:bill_id
+                            AND ROWNUM<=1
+                            ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+
+        sprintf(caTxnMsg, "<TL_BC_TRANS_LOG.pc:tlBcBillLogOpr2:SELECT1>bill_num%d,%s\n", *ReturnNum, *p_sqlCode);
+        glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+
+        if ( sqlca.sqlcode == 0 )
+        {
+            strcpy(p_tlBcBillLog->bc_settle_in, tlBcBillLog.bc_settle_in);
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TL_BC_TRANS_LOG.pc:tlBcBillLogOpr2:SELECT1>Search Record (fwd_ins_id_cd:%s,bill_id:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", fwd_ins_id_cd,bill_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            *ReturnNum = 0;
+        } else
+        {
+            glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogOpr2:SELECT1>Search Record (fwd_ins_id_cd:%s,bill_id:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", fwd_ins_id_cd,bill_id, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+
+int tlBcBillLogUpdate(int oprType, tl_bc_trans_log_def *p_tlBcTransLog, int *p_sqlCode)
+{
+    EXEC SQL BEGIN DECLARE SECTION;
+	    char loc_trans_dt  [ 4   + 1 ];
+	    char sys_tra_no    [ 6  + 1 ];
+	    char mchnt_cd      [ 15   + 1 ];
+	    char resp_code[6 + 1];
+	    char bc_settle_in[1 + 1];
+    EXEC SQL END DECLARE SECTION;
+	switch(oprType)
+	{
+		case GLB_DB_UPDATE1:
+			memset(loc_trans_dt, 0, sizeof(loc_trans_dt));
+			memset(sys_tra_no, 0, sizeof(sys_tra_no));
+			memset(mchnt_cd, 0, sizeof(mchnt_cd));
+			memset(resp_code, 0, sizeof(resp_code));
+			memset(bc_settle_in, 0, sizeof(bc_settle_in));
+			memcpy(loc_trans_dt, p_tlBcTransLog->loc_trans_dt, 4);
+			memcpy(sys_tra_no, p_tlBcTransLog->sys_tra_no, 6);
+			memcpy(mchnt_cd, p_tlBcTransLog->mchnt_cd, 15);
+			memcpy(resp_code, p_tlBcTransLog->fld_28, 6);
+			memcpy(bc_settle_in, p_tlBcTransLog->bc_settle_in,1);
+			EXEC SQL UPDATE tl_bc_bill_log SET
+				bc_settle_in = :bc_settle_in,
+				resp_code = :resp_code
+				WHERE loc_trans_dt = :loc_trans_dt
+					AND mchnt_cd = :mchnt_cd
+					AND sys_tra_no = :sys_tra_no;
+			*p_sqlCode = sqlca.sqlcode;
+			if(sqlca.sqlcode == 1403)
+			{
+				*p_sqlCode = SQL_ERD_NONE_RECORD;
+				glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogUpdate:UPDATE1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+			}
+			else if(sqlca.sqlcode != 0)
+			{
+				glb_Log(0,0,"<TL_BC_BILL_LOG.pc:tlBcBillLogUpdate:UPDATE1>Search Record (loc_trans_dt:%s,mchnt_cd:%s,sys_tra_no:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", loc_trans_dt,mchnt_cd,sys_tra_no, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+			}
+			EXEC SQL COMMIT WORK ;
+			break;
+			
+	}
+	return 0;
+}
+

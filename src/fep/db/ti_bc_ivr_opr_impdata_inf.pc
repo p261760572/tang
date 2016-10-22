@@ -1,0 +1,96 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_ivr_opr_impdata_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_ivr_opr_impdata_inf_def tlBcIvrOprImpdataInf ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tiBcIvrOprImpdataInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode        - 返回值， 输出
+ *      p_tlBcTransLog   - 查找条件，输入
+ *                         查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcIvrOprImpdataInfOpr(int oprType, ti_bc_ivr_opr_impdata_inf_def *p_tlBcIvrOprImpdataInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char opr_list  [ 2   + 1 ];
+    EXEC SQL END DECLARE SECTION;
+
+    int i;
+    char buff[256];
+    MEMSET_0(opr_list);
+
+    char caTxnMsg[2048];
+    switch ( oprType )
+    {
+    
+    case GLB_DB_SELECT1:
+
+        memcpy(opr_list, p_tlBcIvrOprImpdataInf->opr_list,2) ;
+        opr_list[2]=0 ;
+        ADJUST_STRING(opr_list) ;
+
+        EXEC SQL SELECT 
+        opr_list    ,
+        keyid       ,
+        data_len    ,
+        data_flag   ,
+        pin_flag    ,
+        expand_flag     
+        INTO :tlBcIvrOprImpdataInf
+        FROM ti_bc_ivr_opr_impdata_inf
+        WHERE opr_list=:opr_list;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tlBcIvrOprImpdataInf, &tlBcIvrOprImpdataInf, sizeof(ti_bc_ivr_opr_impdata_inf_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            sprintf(caTxnMsg, "<TL_BC_TRANS_LOG.pc:tiBcIvrOprImpdataInfOpr:SELECT1>Search Record (opr_list:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", opr_list, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        } else
+        {
+            sprintf(caTxnMsg, "<TL_BC_TRANS_LOG.pc:tiBcIvrOprImpdataInfOpr:SELECT1>Search Record (opr_list:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", opr_list, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+

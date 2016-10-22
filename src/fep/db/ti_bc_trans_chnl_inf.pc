@@ -1,0 +1,89 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_trans_chnl_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_trans_chnl_inf_def tiBcTransChnlInf ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tiBcTransChnlInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode     - 返回值， 输出
+ *      p_tiBcTrans   - 查找条件，输入
+ *                      查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcTransChnlInfOpr(int oprType, ti_bc_trans_chnl_inf_def *p_tiBcTransChnlInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char  trans_chnl      [30+ 1] ;
+    EXEC SQL END DECLARE SECTION;
+
+   
+    memset(trans_chnl, 0, 31);
+
+    switch (oprType)
+    {    
+    case GLB_DB_SELECT1:
+
+        memcpy(trans_chnl, p_tiBcTransChnlInf->trans_chnl,30);
+        trans_chnl[30]=0;
+        rtrim(trans_chnl);
+
+        EXEC SQL SELECT 
+           trans_chnl      ,
+           packety_type    ,
+           config_nm
+           INTO :tiBcTransChnlInf 
+           FROM ti_bc_trans_chnl_inf
+           WHERE trans_chnl=:trans_chnl
+        ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcTransChnlInf, &tiBcTransChnlInf, sizeof(ti_bc_trans_chnl_inf_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0,"<TI_BC_TRANS_CHNL_INF.pc:tiBcTransChnlInfOpr:SELECT1>Search Record (trans_chnl:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", trans_chnl, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0,"<TI_BC_TRANS_CHNL_INF.pc:tiBcTransChnlInfOpr:SELECT1>Search Record (trans_chnl:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", trans_chnl, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+
+    default:
+        *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+

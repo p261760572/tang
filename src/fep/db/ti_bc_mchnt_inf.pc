@@ -1,0 +1,199 @@
+#include <stdio.h>
+#include <string.h>
+#include <sqlca.h>
+#include <stdlib.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+#include <oraca.h>
+#include "./inc/glbdb.h"
+#include "./inc/ti_bc_mchnt_inf.h"
+
+EXEC ORACLE OPTION (ORACA=YES);
+
+EXEC SQL BEGIN DECLARE SECTION;
+ti_bc_mchnt_inf_def tiBcMchntInf ;
+EXEC SQL END DECLARE SECTION;
+
+
+/*
+ *  Function:  tiBcMchntInfOpr
+ *
+ *
+ *  Parameters:
+ * 
+ *      oprType - 操作类型， 输入， 取值
+ *                SELECT1     
+ *                UPDATE1     
+ *      p_sqlCode      - 返回值， 输出
+ *      p_tiBcMchntInf - 查找条件，输入
+ *                       查找结果，输出
+ *
+ *  Return Value:
+ *
+ *      SUCCESS - success
+ *      FAILURE - failure
+ */
+
+int tiBcMchntInfOpr(int oprType, ti_bc_mchnt_inf_def *p_tiBcMchntInf, int *p_sqlCode)
+{
+    /*EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error:");*/
+    EXEC SQL WHENEVER SQLERROR continue; /*DO sql_error("Oracle error:");*/
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char mchnt_cd        [15 + 1 ];  
+    /*char mkey_index      [3  + 1 ];
+    char mkey_1          [16 + 1 ];
+    char mkey_2          [16 + 1 ];
+    char mkey_3          [16 + 1 ];*/
+    EXEC SQL END DECLARE SECTION;
+
+    MEMSET_0(mchnt_cd)
+    /*
+    MEMSET_0(mkey_index)
+    MEMSET_0(mkey_1)
+    MEMSET_0(mkey_2)
+    MEMSET_0(mkey_3)*/
+    
+    char caTxnMsg[4096];
+    switch (oprType)
+    {
+    
+    case GLB_DB_SELECT1:
+
+        memcpy(mchnt_cd, p_tiBcMchntInf->mchnt_cd,15);
+        mchnt_cd[15]=0;
+        rtrim(mchnt_cd);
+
+        EXEC SQL SELECT 
+        acq_ins_id_cd        ,
+				mchnt_cd  	         ,
+				mchnt_cn_abbr        ,
+				mchnt_nm             ,
+				settle_ins_id_cd     ,
+				settle_acct          ,
+				acct_nm              ,
+				bank_nm              ,
+				area_cd              ,
+				send_msg_flag        ,
+				linkMan              ,
+				email                ,
+				linktel              ,
+				verifi_flag          ,
+				verifi_id            ,
+				pay_flag             ,
+				pay_id               ,
+				reversal_mode        ,
+				using_blacklist      ,
+				blacklist            ,
+				using_whitelist      ,
+				whitelist            ,
+				debit_rcv_ins_id_cd  ,
+				credit_rcv_ins_id_cd ,
+				credit_enable_flag   ,
+				auto_route_flag      ,
+				credit_get_flag      ,
+				debit_limit_times    ,
+				credit_limit_times   ,
+				limit_day            ,
+				openflag                        
+        INTO 
+        	:tiBcMchntInf.acq_ins_id_cd        ,
+					:tiBcMchntInf.mchnt_cd  	         , 
+					:tiBcMchntInf.mchnt_cn_abbr        ,
+					:tiBcMchntInf.mchnt_nm             ,
+					:tiBcMchntInf.settle_ins_id_cd     ,
+					:tiBcMchntInf.settle_acct          ,
+					:tiBcMchntInf.acct_nm              ,
+					:tiBcMchntInf.bank_nm              ,
+					:tiBcMchntInf.area_cd              ,
+					:tiBcMchntInf.send_msg_flag        ,
+					:tiBcMchntInf.linkMan              ,
+					:tiBcMchntInf.email                ,
+					:tiBcMchntInf.linktel              ,
+					:tiBcMchntInf.verifi_flag          ,
+					:tiBcMchntInf.verifi_id            ,
+					:tiBcMchntInf.pay_flag             ,
+					:tiBcMchntInf.pay_id               ,
+					:tiBcMchntInf.reversal_mode        ,
+					:tiBcMchntInf.using_blacklist      ,
+					:tiBcMchntInf.blacklist            ,
+					:tiBcMchntInf.using_whitelist      ,
+					:tiBcMchntInf.whitelist            ,
+					:tiBcMchntInf.debit_rcv_ins_id_cd  ,
+					:tiBcMchntInf.credit_rcv_ins_id_cd ,
+					:tiBcMchntInf.credit_enable_flag   ,
+					:tiBcMchntInf.auto_route_flag      ,
+					:tiBcMchntInf.credit_get_flag      ,
+					:tiBcMchntInf.debit_limit_times    ,
+					:tiBcMchntInf.credit_limit_times   ,
+					:tiBcMchntInf.limit_day            ,
+					:tiBcMchntInf.openflag     
+        FROM ti_bc_mchnt_inf
+        WHERE rtrim(mchnt_cd)=:mchnt_cd
+        ;
+
+        /* search result */
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcMchntInf, &tiBcMchntInf, sizeof(ti_bc_mchnt_inf_def));
+        } else if ( sqlca.sqlcode == 1403 )
+        {
+            *p_sqlCode = SQL_ERD_NONE_RECORD;
+            glb_Log(0,0, "<TI_BC_MCHNT_INF.pc:tiBcMchntInfOpr:SELECT1>Search Record (mchnt_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", mchnt_cd,sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        } else
+        {
+            glb_Log(0,0, "<TI_BC_MCHNT_INF.pc:tiBcMchntInfOpr:SELECT1>Search Record (mchnt_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", mchnt_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+/*
+    case GLB_DB_UPDATE2:
+    
+        memcpy(mchnt_cd, p_tiBcMchntInf->mchnt_cd,15);
+        mchnt_cd[15]=0;
+
+        memcpy(mkey_1, p_tiBcMchntInf->mkey_1,16);
+        ADJUST_STRING(mkey_1)
+
+        memcpy(mkey_2, p_tiBcMchntInf->mkey_2,16);
+        ADJUST_STRING(mkey_2)
+
+        memcpy(mkey_3, p_tiBcMchntInf->mkey_3,16);
+        ADJUST_STRING(mkey_3)
+
+        glb_GetLocalTimeString(rec_upd_ts,15,"%Y%m%d%H%M%S");
+
+        EXEC SQL UPDATE ti_bc_mchnt_inf
+        SET mkey_1=:mkey_1, 
+        mkey_2=:mkey_2, 
+        mkey_3=:mkey_3, 
+        rec_upd_ts=:rec_upd_ts
+                   WHERE rtrim(mchnt_cd)=:mchnt_cd
+                                        ;
+  
+        *p_sqlCode = sqlca.sqlcode;
+        if ( sqlca.sqlcode == 0 )
+        {
+            memcpy(p_tiBcMchntInf, &tiBcMchntInf, sizeof(ti_bc_mchnt_inf_def));
+        } else if ( memcmp(sqlca.sqlerrm.sqlerrmc, "ORA-00001", 0 ) == 0 )
+        {
+            *p_sqlCode = SQL_ERD_UNIKEY;
+            sprintf(caTxnMsg, "<TI_BC_MCHNT_INF.pc:tiBcMchntInfOpr:UPDATE2>Search Record (mchnt_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", mchnt_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        } else
+        {
+            sprintf(caTxnMsg, "<TI_BC_MCHNT_INF.pc:tiBcMchntInfOpr:UPDATE2>Search Record (mchnt_cd:%s) Error.\n[sqlCode:%d]errmsg:\n----------\n%s\n", mchnt_cd, sqlca.sqlcode, sqlca.sqlerrm.sqlerrmc );
+            glb_ErrLog( 1000, caTxnMsg, RPT_TO_LOG, 0, 0 );
+        }
+        EXEC SQL COMMIT WORK ;
+        break;
+*/
+    default:
+    *p_sqlCode = -1;
+        return -1;
+    }
+
+    return 0;
+}
+
